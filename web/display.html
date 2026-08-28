@@ -30,7 +30,6 @@
     #status { position: absolute; right: 50%; bottom: 20px; transform: translateX(50%); padding: 7px 11px; border-radius: 7px; background: rgba(15, 23, 42, .78); color: #e2e8f0; font-size: .9rem; }
     #status.error { color: #fca5a5; }
     #map { height: 100%; min-height: 300px; width: 100%; }
-    #map.dark-map { filter: brightness(.60) contrast(1.08) saturate(.80); }
     #settings { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 20px; background: rgba(3, 7, 18, .85); }
     #settings[hidden] { display: none; }
     form { width: min(100%, 520px); max-height: calc(100vh - 40px); overflow: auto; padding: 24px; border: 1px solid #475569; border-radius: 14px; background: #1e293b; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
@@ -80,7 +79,7 @@
   <section id="settings" hidden>
     <form id="settings-form">
       <h1>HERE traffic route</h1>
-      <div class="build-version">Build 17</div>
+      <div class="build-version">Build 18</div>
       <p>Enter a HERE JavaScript/REST API key and two addresses or coordinates. Values are retained only in this browser.</p>
       <label>HERE API key <input id="api-key" type="password" required autocomplete="off" placeholder="Your HERE API key" /></label>
       <label>Origin <input id="origin" required placeholder="e.g. Dublin Airport, Ireland" /></label>
@@ -198,12 +197,14 @@
         platform = new H.service.Platform({ apikey: apiKey });
         const layers = platform.createDefaultLayers();
         const vectorNormal = layers.vector && layers.vector.normal;
-        // Use the original HERE vector base layer in both modes. This avoids
-        // renderer-specific night-layer failures; Dark mode is applied visually.
-        const baseLayer = vectorNormal?.map || layers.raster?.normal?.map;
+        // Use HERE's native raster day/night basemaps. Raster night mode works
+        // with the standard v3.1 renderer and needs no HARP renderer module.
+        const rasterNormal = layers.raster && layers.raster.normal;
+        const lightLayer = rasterNormal?.map || vectorNormal?.map;
+        const darkLayer = rasterNormal?.mapnight || lightLayer;
+        const baseLayer = theme === 'dark' ? darkLayer : lightLayer;
         if (!baseLayer) throw new Error('HERE could not create a base map layer for this API key.');
         map = new H.Map($('map'), baseLayer, { pixelRatio: window.devicePixelRatio || 1 });
-        $('map').classList.toggle('dark-map', theme === 'dark');
         // Surface tile/loading failures in the card instead of leaving a blank map.
         const provider = baseLayer.getProvider && baseLayer.getProvider();
         if (provider?.addEventListener) {
@@ -214,7 +215,7 @@
         }
         // Layer names vary by HERE rendering engine/version. Never add an
         // undefined layer: that produces H.map.DataModel#add Argument #0 Undefined.
-        const trafficLayer = vectorNormal?.traffic || layers.raster?.normal?.traffic || layers.vector?.traffic?.map;
+        const trafficLayer = rasterNormal?.traffic || vectorNormal?.traffic || layers.vector?.traffic?.map;
         if (trafficLayer) map.addLayer(trafficLayer); // live flow/incident overlay
         new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
         ui = H.ui.UI.createDefault(map, layers);
@@ -311,9 +312,12 @@
         const centerLng = (bounds.getLeft() + bounds.getRight()) / 2;
         const latHalf = Math.max((bounds.getTop() - bounds.getBottom()) / 2 * paddingFactor, 0.002);
         const lngHalf = Math.max((bounds.getRight() - bounds.getLeft()) / 2 * paddingFactor, 0.002);
+        // Compact mode has a bottom information bar. Add more geographic room
+        // below the route, which shifts the whole fitted route upward on screen.
+        const compactBottomRoom = window.HERE_TRAFFIC_COMPACT ? latHalf * 0.8 : 0;
         const paddedBounds = new H.geo.Rect(
           centerLat + latHalf, centerLng - lngHalf,
-          centerLat - latHalf, centerLng + lngHalf
+          centerLat - latHalf - compactBottomRoom, centerLng + lngHalf
         );
         map.getViewModel().setLookAtData({ bounds: paddedBounds });
         const total = route.sections.reduce((sum, s) => sum + (s.travelSummary?.duration || 0), 0);
