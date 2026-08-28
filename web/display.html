@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HERE Traffic Route</title>
+  <!-- HERE Maps JavaScript API v3.1 -->
+  <script src="https://js.api.here.com/v3/3.1/mapsjs-core.js"></script>
+  <script src="https://js.api.here.com/v3/3.1/mapsjs-service.js"></script>
+  <script src="https://js.api.here.com/v3/3.1/mapsjs-ui.js"></script>
+  <script src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js"></script>
+  <link rel="stylesheet" href="https://js.api.here.com/v3/3.1/mapsjs-ui.css" />
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #111827; color: #f8fafc; }
+    #app { height: 100vh; min-height: 300px; }
+    #summary { position: fixed; z-index: 4; inset: 0; pointer-events: none; }
+    .metric { position: absolute; display: flex; flex-direction: column; min-width: 208px; padding: 18px 22px; border: 1px solid rgba(148, 163, 184, .55); border-radius: 14px; background: rgba(15, 23, 42, .82); box-shadow: 0 5px 18px rgba(0,0,0,.36); backdrop-filter: blur(7px); }
+    .metric small { color: #cbd5e1; font-size: .98rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+    .metric strong { font-size: clamp(2.15rem, 4vw, 3.2rem); line-height: 1.08; margin-top: 6px; }
+    .metric:nth-child(1) { top: 16px; left: 16px; }
+    .metric:nth-child(2) { top: 16px; right: 16px; }
+    .metric:nth-child(3) { bottom: 16px; left: 16px; }
+    .metric:nth-child(4) { bottom: 16px; right: 16px; }
+    .metric.congestion-green { background: rgba(21, 128, 61, .92); border-color: rgba(134, 239, 172, .75); }
+    .metric.congestion-amber { background: rgba(180, 83, 9, .94); border-color: rgba(253, 230, 138, .82); }
+    .metric.congestion-red { background: rgba(185, 28, 28, .94); border-color: rgba(254, 202, 202, .82); }
+    .metric.congestion-green small, .metric.congestion-amber small, .metric.congestion-red small { color: #fff; }
+    #status { position: absolute; right: 50%; bottom: 20px; transform: translateX(50%); padding: 7px 11px; border-radius: 7px; background: rgba(15, 23, 42, .78); color: #e2e8f0; font-size: .9rem; }
+    #status.error { color: #fca5a5; }
+    #map { height: 100%; min-height: 300px; width: 100%; }
+    #map.dark-map { filter: brightness(.60) contrast(1.08) saturate(.80); }
+    #settings { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 20px; background: rgba(3, 7, 18, .85); }
+    #settings[hidden] { display: none; }
+    form { width: min(100%, 520px); max-height: calc(100vh - 40px); overflow: auto; padding: 24px; border: 1px solid #475569; border-radius: 14px; background: #1e293b; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+    h1 { margin: 0 0 8px; font-size: 1.25rem; }
+    .build-version { margin: -3px 0 14px; color: #94a3b8; font-size: .78rem; }
+    p { color: #cbd5e1; font-size: .9rem; line-height: 1.45; }
+    label { display: block; margin-top: 14px; font-size: .85rem; color: #e2e8f0; }
+    input, select { display: block; width: 100%; margin-top: 6px; padding: 10px; border: 1px solid #64748b; border-radius: 7px; background: #0f172a; color: #fff; font: inherit; }
+    button { margin-top: 20px; padding: 10px 14px; border: 0; border-radius: 7px; background: #38bdf8; color: #082f49; font-weight: 700; cursor: pointer; }
+    #route-actions { position: fixed; z-index: 5; top: 16px; right: 50%; transform: translateX(50%); display: flex; gap: 8px; }
+    .quiet-button { margin: 0; background: #1e293b; border: 1px solid #64748b; color: #f8fafc; font-size: .8rem; box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+    a { color: #7dd3fc; }
+    @media (max-width: 640px) {
+      .metric { min-width: 116px; padding: 9px 11px; }
+      .metric small { font-size: .62rem; }
+      .metric strong { font-size: 1.35rem; }
+      .metric:nth-child(1), .metric:nth-child(2) { top: 10px; }
+      .metric:nth-child(3), .metric:nth-child(4) { bottom: 10px; }
+      .metric:nth-child(1), .metric:nth-child(3) { left: 10px; }
+      .metric:nth-child(2), .metric:nth-child(4) { right: 10px; }
+      #route-actions { top: 76px; }
+      #status { bottom: 86px; max-width: calc(100% - 40px); text-align: center; }
+    }
+    body.compact #summary { position: fixed; inset: auto 0 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 8px; background: rgba(15, 23, 42, .88); pointer-events: auto; }
+    body.compact .metric, body.compact .metric:nth-child(n) { position: static; min-width: 0; padding: 8px 10px; border-radius: 8px; }
+    body.compact .metric small { font-size: .58rem; }
+    body.compact .metric strong { font-size: clamp(1.05rem, 2.8vw, 1.6rem); }
+    body.compact #status, body.compact #route-actions { display: none; }
+  </style>
+</head>
+<body>
+  <main id="app">
+    <section id="summary" aria-live="polite">
+      <div id="trip-metric" class="metric"><small>Trip time</small><strong id="duration">—</strong></div>
+      <div class="metric"><small>Normal time</small><strong id="normal-duration">—</strong></div>
+      <div class="metric"><small>Traffic delay</small><strong id="delay">—</strong></div>
+      <div class="metric"><small>Distance</small><strong id="distance">—</strong></div>
+      <span id="status">Configure a route to begin</span>
+    </section>
+    <div id="route-actions" aria-label="Route controls">
+      <button id="edit-settings" class="quiet-button" type="button">Settings</button>
+      <button id="reset" class="quiet-button" type="button">Reset</button>
+    </div>
+    <div id="map" role="application" aria-label="Route map"></div>
+  </main>
+
+  <section id="settings" hidden>
+    <form id="settings-form">
+      <h1>HERE traffic route</h1>
+      <div class="build-version">Build 17</div>
+      <p>Enter a HERE JavaScript/REST API key and two addresses or coordinates. Values are retained only in this browser.</p>
+      <label>HERE API key <input id="api-key" type="password" required autocomplete="off" placeholder="Your HERE API key" /></label>
+      <label>Origin <input id="origin" required placeholder="e.g. Dublin Airport, Ireland" /></label>
+      <label>Destination <input id="destination" required placeholder="e.g. Trinity College Dublin" /></label>
+      <label>Route colour scheme
+        <select id="route-scheme">
+          <option value="ocean">Ocean blue</option>
+          <option value="emerald">Emerald green</option>
+          <option value="sunset">Sunset orange</option>
+          <option value="violet">Violet</option>
+          <option value="contrast">High contrast yellow</option>
+        </select>
+      </label>
+      <label>Map appearance
+        <select id="map-theme">
+          <option value="dark" selected>Dark</option>
+          <option value="light">Light</option>
+        </select>
+      </label>
+      <label>Map framing
+        <select id="zoom-out">
+          <option value="0.7">Normal — some room around route</option>
+          <option value="1.2" selected>Spacious — recommended for overlays</option>
+          <option value="1.7">Extra spacious</option>
+        </select>
+      </label>
+      <label>Route width
+        <select id="route-width">
+          <option value="8">Slim (8px)</option>
+          <option value="12" selected>Standard (12px)</option>
+          <option value="16">Wide (16px)</option>
+          <option value="22">Extra wide (22px)</option>
+        </select>
+      </label>
+      <label>Route border width
+        <select id="border-width">
+          <option value="4">Thin (4px)</option>
+          <option value="7" selected>Standard (7px)</option>
+          <option value="10">Thick (10px)</option>
+        </select>
+      </label>
+      <label>Green trip-time delay: up to (%)
+        <input id="green-threshold" type="number" min="0" max="100" step="1" value="10" inputmode="numeric" />
+      </label>
+      <label>Amber trip-time delay: up to (%)
+        <input id="amber-threshold" type="number" min="0" max="100" step="1" value="30" inputmode="numeric" />
+      </label>
+      <p>Red applies above the amber percentage. For example: green 10%, amber 30%, red above 30%.</p>
+      <button type="submit">Show traffic</button>
+      <p>You can also supply <code>?apiKey=…&amp;origin=…&amp;destination=…</code> in the iframe URL. Avoid this option if the dashboard URL can be shared.</p>
+    </form>
+  </section>
+
+  <script>
+    (() => {
+      const $ = id => document.getElementById(id);
+      const settings = $('settings'), form = $('settings-form'), status = $('status');
+      const editSettings = $('edit-settings'), reset = $('reset');
+      const managedConfig = window.HERE_TRAFFIC_CONFIG || null;
+      if (window.HERE_TRAFFIC_COMPACT) document.body.classList.add('compact');
+      const params = new URLSearchParams(location.search);
+      const storageKey = 'here-traffic-card-config';
+      let map, platform, ui, routeGroup;
+      const routeSchemes = {
+        ocean:   { line: '#38bdf8', outline: '#082f49' },
+        emerald: { line: '#34d399', outline: '#064e3b' },
+        sunset:  { line: '#fb923c', outline: '#7c2d12' },
+        violet:  { line: '#a78bfa', outline: '#3b0764' },
+        contrast:{ line: '#fde047', outline: '#111827' }
+      };
+
+      function getConfig() {
+        if (managedConfig) return managedConfig;
+        const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+        return {
+          apiKey: params.get('apiKey') || saved.apiKey || '',
+          origin: params.get('origin') || saved.origin || '',
+          destination: params.get('destination') || saved.destination || '',
+          scheme: params.get('scheme') || saved.scheme || 'ocean',
+          theme: params.get('theme') || saved.theme || 'dark',
+          zoomOut: params.get('zoomOut') || saved.zoomOut || '1.2',
+          routeWidth: params.get('routeWidth') || saved.routeWidth || '12',
+          borderWidth: params.get('borderWidth') || saved.borderWidth || '7',
+          greenThreshold: params.get('greenThreshold') || saved.greenThreshold || '10',
+          amberThreshold: params.get('amberThreshold') || saved.amberThreshold || '30'
+        };
+      }
+      function formatTime(seconds) {
+        seconds = Math.round(seconds || 0);
+        const hours = Math.floor(seconds / 3600), minutes = Math.round((seconds % 3600) / 60);
+        return hours ? `${hours}h ${minutes}m` : `${minutes} min`;
+      }
+      function formatDistance(meters) {
+        return meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${Math.round(meters)} m`;
+      }
+      function setStatus(message, error = false) {
+        status.textContent = message;
+        status.classList.toggle('error', error);
+      }
+      function showSettings(config = getConfig()) {
+        if (managedConfig) return;
+        $('api-key').value = config.apiKey;
+        $('origin').value = config.origin;
+        $('destination').value = config.destination;
+        $('route-scheme').value = routeSchemes[config.scheme] ? config.scheme : 'ocean';
+        $('map-theme').value = config.theme === 'light' ? 'light' : 'dark';
+        $('zoom-out').value = config.zoomOut;
+        $('route-width').value = config.routeWidth;
+        $('border-width').value = config.borderWidth;
+        $('green-threshold').value = config.greenThreshold;
+        $('amber-threshold').value = config.amberThreshold;
+        settings.hidden = false;
+      }
+      function initMap(apiKey, theme) {
+        platform = new H.service.Platform({ apikey: apiKey });
+        const layers = platform.createDefaultLayers();
+        const vectorNormal = layers.vector && layers.vector.normal;
+        // Use the original HERE vector base layer in both modes. This avoids
+        // renderer-specific night-layer failures; Dark mode is applied visually.
+        const baseLayer = vectorNormal?.map || layers.raster?.normal?.map;
+        if (!baseLayer) throw new Error('HERE could not create a base map layer for this API key.');
+        map = new H.Map($('map'), baseLayer, { pixelRatio: window.devicePixelRatio || 1 });
+        $('map').classList.toggle('dark-map', theme === 'dark');
+        // Surface tile/loading failures in the card instead of leaving a blank map.
+        const provider = baseLayer.getProvider && baseLayer.getProvider();
+        if (provider?.addEventListener) {
+          provider.addEventListener('error', event => {
+            console.error('HERE map tile error', event);
+            setStatus('Map tiles failed to load — check the HERE API key and its Maps API permissions.', true);
+          });
+        }
+        // Layer names vary by HERE rendering engine/version. Never add an
+        // undefined layer: that produces H.map.DataModel#add Argument #0 Undefined.
+        const trafficLayer = vectorNormal?.traffic || layers.raster?.normal?.traffic || layers.vector?.traffic?.map;
+        if (trafficLayer) map.addLayer(trafficLayer); // live flow/incident overlay
+        new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
+        ui = H.ui.UI.createDefault(map, layers);
+        routeGroup = new H.map.Group();
+        map.addObject(routeGroup);
+        map.getViewPort().resize();
+        window.addEventListener('resize', () => map.getViewPort().resize());
+      }
+      async function geocode(query, apiKey) {
+        const url = new URL('https://geocode.search.hereapi.com/v1/geocode');
+        url.search = new URLSearchParams({ q: query, apiKey });
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Could not find a location');
+        const data = await response.json();
+        if (!data.items?.length) throw new Error(`No location found for “${query}”`);
+        return data.items[0].position;
+      }
+      async function loadRoute(config) {
+        setStatus('Finding locations…');
+        const [origin, destination] = await Promise.all([
+          geocode(config.origin, config.apiKey), geocode(config.destination, config.apiKey)
+        ]);
+        setStatus('Fetching live traffic…');
+        const url = new URL('https://router.hereapi.com/v8/routes');
+        url.search = new URLSearchParams({
+          origin: `${origin.lat},${origin.lng}`,
+          destination: `${destination.lat},${destination.lng}`,
+          transportMode: 'car',
+          return: 'polyline,summary,travelSummary',
+          spans: 'dynamicSpeedInfo',
+          apiKey: config.apiKey
+        });
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('HERE Routing request failed. Check the API key and enabled services.');
+        const data = await response.json(), route = data.routes?.[0];
+        if (!route) throw new Error('No driving route is available between these locations.');
+        drawRoute(route, origin, destination, config);
+      }
+      function drawRoute(route, origin, destination, config) {
+        routeGroup.removeAll();
+        const line = new H.geo.LineString();
+        const routeSegments = [];
+        for (const section of route.sections) {
+          const sectionPoints = [];
+          H.geo.LineString.fromFlexiblePolyline(section.polyline).eachLatLngAlt((lat, lng, alt) => {
+            const point = { lat, lng, alt: alt || 0 };
+            sectionPoints.push(point);
+            line.pushLatLngAlt(point.lat, point.lng, point.alt);
+          });
+          // HERE span offsets identify the geometry point where each traffic
+          // speed range begins. Convert each range into a speed ratio per point.
+          const ratios = Array(sectionPoints.length).fill(1);
+          const spans = (section.spans || []).filter(span => span.dynamicSpeedInfo);
+          for (let i = 0; i < spans.length; i++) {
+            const start = Math.max(0, spans[i].offset || 0);
+            const end = Math.min(sectionPoints.length, i + 1 < spans.length ? spans[i + 1].offset : sectionPoints.length);
+            const info = spans[i].dynamicSpeedInfo;
+            const ratio = info.baseSpeed > 0 ? Math.max(0, Math.min(1, info.trafficSpeed / info.baseSpeed)) : 1;
+            for (let point = start; point < end; point++) ratios[point] = ratio;
+          }
+          // Blend a few adjacent geometry points so traffic colours transition
+          // gently at span boundaries instead of changing abruptly.
+          const smoothedRatios = ratios.map((_, index) => {
+            const start = Math.max(0, index - 3), end = Math.min(ratios.length - 1, index + 3);
+            let total = 0;
+            for (let point = start; point <= end; point++) total += ratios[point];
+            return total / (end - start + 1);
+          });
+          for (let point = 0; point < sectionPoints.length - 1; point++) {
+            routeSegments.push({ start: sectionPoints[point], end: sectionPoints[point + 1], ratio: (smoothedRatios[point] + smoothedRatios[point + 1]) / 2 });
+          }
+        }
+        const scheme = routeSchemes[config.scheme] || routeSchemes.ocean;
+        const routeWidth = Number(config.routeWidth) || 12;
+        const borderWidth = Number(config.borderWidth) || 7;
+        // The dark halo keeps the route legible over every traffic-flow colour.
+        routeGroup.addObject(new H.map.Polyline(line, { style: { strokeColor: scheme.outline, lineWidth: routeWidth + (borderWidth * 2), lineOpacity: 0.9 } }));
+        routeGroup.addObjects(routeSegments.map(segment => {
+          const segmentLine = new H.geo.LineString();
+          segmentLine.pushLatLngAlt(segment.start.lat, segment.start.lng, segment.start.alt);
+          segmentLine.pushLatLngAlt(segment.end.lat, segment.end.lng, segment.end.alt);
+          return new H.map.Polyline(segmentLine, {
+            style: { strokeColor: trafficColour(segment.ratio), lineWidth: routeWidth, lineCap: 'round', lineJoin: 'round' }
+          });
+        }));
+        routeGroup.addObjects([
+          new H.map.Marker(origin), new H.map.Marker(destination)
+        ]);
+        const bounds = routeGroup.getBoundingBox();
+        // Expand the geographic bounds before fitting. This is reliable even
+        // while HERE is still calculating the zoom level for the new route.
+        const paddingFactor = 1 + ((Number(config.zoomOut) || 1.2) * 0.55);
+        const centerLat = (bounds.getTop() + bounds.getBottom()) / 2;
+        const centerLng = (bounds.getLeft() + bounds.getRight()) / 2;
+        const latHalf = Math.max((bounds.getTop() - bounds.getBottom()) / 2 * paddingFactor, 0.002);
+        const lngHalf = Math.max((bounds.getRight() - bounds.getLeft()) / 2 * paddingFactor, 0.002);
+        const paddedBounds = new H.geo.Rect(
+          centerLat + latHalf, centerLng - lngHalf,
+          centerLat - latHalf, centerLng + lngHalf
+        );
+        map.getViewModel().setLookAtData({ bounds: paddedBounds });
+        const total = route.sections.reduce((sum, s) => sum + (s.travelSummary?.duration || 0), 0);
+        const base = route.sections.reduce((sum, s) => sum + (s.travelSummary?.baseDuration || s.travelSummary?.duration || 0), 0);
+        const length = route.sections.reduce((sum, s) => sum + (s.travelSummary?.length || 0), 0);
+        $('duration').textContent = formatTime(total);
+        $('normal-duration').textContent = formatTime(base);
+        $('delay').textContent = total > base ? `+${formatTime(total - base)}` : 'No delay';
+        $('distance').textContent = formatDistance(length);
+        const delayPercent = base > 0 ? Math.max(0, ((total - base) / base) * 100) : 0;
+        const requestedGreen = Number(config.greenThreshold), requestedAmber = Number(config.amberThreshold);
+        const greenThreshold = Math.max(0, Math.min(100, Number.isFinite(requestedGreen) ? requestedGreen : 10));
+        const amberThreshold = Math.max(greenThreshold, Math.min(100, Number.isFinite(requestedAmber) ? requestedAmber : 30));
+        const congestion = delayPercent <= greenThreshold ? 'green' : delayPercent <= amberThreshold ? 'amber' : 'red';
+        const tripMetric = $('trip-metric');
+        tripMetric.classList.remove('congestion-green', 'congestion-amber', 'congestion-red');
+        tripMetric.classList.add(`congestion-${congestion}`);
+        tripMetric.setAttribute('aria-label', `Trip time: ${congestion} traffic`);
+        setStatus(`Updated ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
+      }
+      function trafficColour(speedRatio) {
+        const green = [34, 197, 94], amber = [245, 158, 11], red = [239, 68, 68];
+        const congestion = Math.max(0, Math.min(1, (1 - speedRatio) / 0.65));
+        const [from, to, amount] = congestion <= 0.5
+          ? [green, amber, congestion * 2]
+          : [amber, red, (congestion - 0.5) * 2];
+        const channel = index => Math.round(from[index] + ((to[index] - from[index]) * amount));
+        return `rgb(${channel(0)}, ${channel(1)}, ${channel(2)})`;
+      }
+      async function start(config) {
+        try {
+          settings.hidden = true;
+          if (map) { map.dispose(); map = null; }
+          initMap(config.apiKey, config.theme);
+          await loadRoute(config);
+        } catch (error) {
+          console.error(error);
+          setStatus(error.message || 'Unable to load traffic.', true);
+          showSettings(config);
+        }
+      }
+      form.addEventListener('submit', event => {
+        event.preventDefault();
+        const config = {
+          apiKey: $('api-key').value.trim(),
+          origin: $('origin').value.trim(),
+          destination: $('destination').value.trim(),
+          scheme: $('route-scheme').value,
+          theme: $('map-theme').value,
+          zoomOut: $('zoom-out').value,
+          routeWidth: $('route-width').value,
+          borderWidth: $('border-width').value,
+          greenThreshold: $('green-threshold').value,
+          amberThreshold: $('amber-threshold').value
+        };
+        localStorage.setItem(storageKey, JSON.stringify(config));
+        start(config);
+      });
+      editSettings.addEventListener('click', () => showSettings(getConfig()));
+      reset.addEventListener('click', () => {
+        localStorage.removeItem(storageKey);
+        if (map) { map.dispose(); map = null; }
+        $('duration').textContent = '—';
+        $('normal-duration').textContent = '—';
+        $('delay').textContent = '—';
+        $('distance').textContent = '—';
+        $('trip-metric').classList.remove('congestion-green', 'congestion-amber', 'congestion-red');
+        setStatus('Configuration cleared');
+        showSettings({ apiKey: '', origin: '', destination: '', scheme: 'ocean', theme: 'dark', zoomOut: '1.2', routeWidth: '12', borderWidth: '7', greenThreshold: '10', amberThreshold: '30' });
+      });
+      const initial = getConfig();
+      if (managedConfig) {
+        editSettings.hidden = true;
+        reset.hidden = true;
+        settings.hidden = true;
+        start(initial);
+      } else if (initial.apiKey && initial.origin && initial.destination) start(initial); else showSettings(initial);
+    })();
+  </script>
+</body>
+</html>
