@@ -16,9 +16,9 @@
     body { margin: 0; background: #111827; color: #f8fafc; }
     #app { height: 100vh; min-height: 300px; }
     #summary { position: fixed; z-index: 4; inset: 0; pointer-events: none; }
-    .metric { position: absolute; display: flex; flex-direction: column; min-width: 208px; padding: 18px 22px; border: 1px solid rgba(148, 163, 184, .55); border-radius: 14px; background: rgba(15, 23, 42, .82); box-shadow: 0 5px 18px rgba(0,0,0,.36); backdrop-filter: blur(7px); }
-    .metric small { color: #cbd5e1; font-size: .98rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
-    .metric strong { font-size: clamp(2.15rem, 4vw, 3.2rem); line-height: 1.08; margin-top: 6px; }
+    .metric { position: absolute; display: flex; flex-direction: column; min-width: var(--metric-width,208px); padding: var(--metric-padding,18px 22px); border: 1px solid rgba(148, 163, 184, .55); border-radius: 14px; background: rgba(15, 23, 42, .82); box-shadow: 0 5px 18px rgba(0,0,0,.36); backdrop-filter: blur(7px); }
+    .metric small { color: #cbd5e1; font-size: var(--metric-label,.98rem); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+    .metric strong { font-size: var(--metric-value,clamp(2.15rem, 4vw, 3.2rem)); line-height: 1.08; margin-top: 6px; }
     .metric:nth-child(1) { top: 16px; left: 16px; }
     .metric:nth-child(2) { top: 16px; right: 16px; }
     .metric:nth-child(3) { bottom: 16px; left: 16px; }
@@ -27,6 +27,10 @@
     .metric.congestion-amber { background: rgba(180, 83, 9, .94); border-color: rgba(253, 230, 138, .82); }
     .metric.congestion-red { background: rgba(185, 28, 28, .94); border-color: rgba(254, 202, 202, .82); }
     .metric.congestion-green small, .metric.congestion-amber small, .metric.congestion-red small { color: #fff; }
+    body.corner-vignette .metric { border: 0; border-radius: 0; box-shadow: none; backdrop-filter: none; background: radial-gradient(ellipse at var(--vignette-origin), rgba(15,23,42,.92), rgba(15,23,42,.52) 46%, transparent 74%); }
+    body.corner-vignette .metric:nth-child(1) { --vignette-origin: top left; } body.corner-vignette .metric:nth-child(2) { --vignette-origin: top right; } body.corner-vignette .metric:nth-child(3) { --vignette-origin: bottom left; } body.corner-vignette .metric:nth-child(4) { --vignette-origin: bottom right; }
+    #display-title { position: fixed; z-index: 6; top: 18px; left: 50%; transform: translateX(-50%); max-width: 70vw; padding: 8px 18px; border-radius: 10px; background: rgba(15,23,42,.84); color: #fff; font: 700 2rem/1.15 system-ui,sans-serif; text-align: center; text-shadow: 0 1px 3px #000; }
+    #display-title[hidden] { display: none; } body.title-bottom #display-title { top: auto; bottom: 18px; } body.title-small #display-title { font-size: 1.25rem; } body.title-large #display-title { font-size: 3rem; } body.title-no-background #display-title { background: transparent; box-shadow: none; } body.title-serif #display-title { font-family: Georgia,serif; } body.title-mono #display-title { font-family: ui-monospace,SFMono-Regular,monospace; }
     #status { position: absolute; right: 50%; bottom: 20px; transform: translateX(50%); padding: 7px 11px; border-radius: 7px; background: rgba(15, 23, 42, .78); color: #e2e8f0; font-size: .9rem; }
     #status.error { color: #fca5a5; }
     #map { height: 100%; min-height: 300px; width: 100%; }
@@ -54,9 +58,9 @@
       #status { bottom: 86px; max-width: calc(100% - 40px); text-align: center; }
     }
     body.compact #summary { position: fixed; inset: auto 0 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 8px; background: rgba(15, 23, 42, .88); pointer-events: auto; }
-    body.compact .metric, body.compact .metric:nth-child(n) { position: static; min-width: 0; padding: 8px 10px; border-radius: 8px; }
-    body.compact .metric small { font-size: .58rem; }
-    body.compact .metric strong { font-size: clamp(1.05rem, 2.8vw, 1.6rem); }
+    body.compact .metric, body.compact .metric:nth-child(n) { position: static; min-width: 0; padding: var(--metric-padding,8px 10px); border-radius: 8px; }
+    body.compact .metric small { font-size: var(--metric-label,.58rem); }
+    body.compact .metric strong { font-size: var(--metric-value,clamp(1.05rem, 2.8vw, 1.6rem)); }
     body.compact #status, body.compact #route-actions { display: none; }
   </style>
 </head>
@@ -73,13 +77,14 @@
       <button id="edit-settings" class="quiet-button" type="button">Settings</button>
       <button id="reset" class="quiet-button" type="button">Reset</button>
     </div>
+    <div id="display-title" hidden></div>
     <div id="map" role="application" aria-label="Route map"></div>
   </main>
 
   <section id="settings" hidden>
     <form id="settings-form">
       <h1>HERE traffic route</h1>
-      <div class="build-version">Build 20</div>
+      <div class="build-version">Build 23</div>
       <p>Enter a HERE JavaScript/REST API key and two addresses or coordinates. Values are retained only in this browser.</p>
       <label>HERE API key <input id="api-key" type="password" required autocomplete="off" placeholder="Your HERE API key" /></label>
       <label>Origin <input id="origin" required placeholder="e.g. Dublin Airport, Ireland" /></label>
@@ -143,7 +148,7 @@
       if (window.HERE_TRAFFIC_COMPACT) document.body.classList.add('compact');
       const params = new URLSearchParams(location.search);
       const storageKey = 'here-traffic-card-config';
-      let map, platform, ui, routeGroup;
+      let map, platform, ui, routeGroup, refreshTimer;
       const routeSchemes = {
         ocean:   { line: '#38bdf8', outline: '#082f49' },
         emerald: { line: '#34d399', outline: '#064e3b' },
@@ -348,10 +353,12 @@
       }
       async function start(config) {
         try {
+          applyPresentation(config);
           settings.hidden = true;
           if (map) { map.dispose(); map = null; }
           initMap(config.apiKey, resolveTheme(config.theme));
           await loadRoute(config);
+          scheduleRefresh(config);
         } catch (error) {
           console.error(error);
           setStatus(error.message || 'Unable to load traffic.', true);
@@ -362,6 +369,33 @@
         return theme === 'auto'
           ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
           : theme;
+      }
+      function applyPresentation(config) {
+        const body = document.body, title = $('display-title');
+        const presets = {
+          small: ['150px', '11px 14px', '.72rem', 'clamp(1.5rem, 2.7vw, 2.15rem)'],
+          medium: ['180px', '14px 17px', '.84rem', 'clamp(1.8rem, 3.3vw, 2.6rem)'],
+          large: ['208px', '18px 22px', '.98rem', 'clamp(2.15rem, 4vw, 3.2rem)']
+        };
+        const [width, padding, label, value] = presets[config.metricSize] || presets.large;
+        body.style.setProperty('--metric-width', width); body.style.setProperty('--metric-padding', padding);
+        body.style.setProperty('--metric-label', label); body.style.setProperty('--metric-value', value);
+        body.classList.toggle('corner-vignette', config.metricStyle === 'vignette');
+        title.textContent = config.title || '';
+        title.hidden = !config.title;
+        body.classList.toggle('title-bottom', config.titlePosition === 'bottom');
+        body.classList.toggle('title-small', config.titleSize === 'small');
+        body.classList.toggle('title-large', config.titleSize === 'large');
+        body.classList.toggle('title-no-background', config.titleBackground === 'none');
+        body.classList.toggle('title-serif', config.titleFont === 'serif');
+        body.classList.toggle('title-mono', config.titleFont === 'mono');
+      }
+      function scheduleRefresh(config) {
+        clearInterval(refreshTimer);
+        const minutes = Number(config.refreshInterval);
+        if (Number.isFinite(minutes) && minutes > 0) {
+          refreshTimer = setInterval(() => start(config), minutes * 60 * 1000);
+        }
       }
       form.addEventListener('submit', event => {
         event.preventDefault();

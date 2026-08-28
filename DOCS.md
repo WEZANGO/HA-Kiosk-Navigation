@@ -2,6 +2,12 @@
 
 This Home Assistant app (formerly called an add-on) stores one shared HERE API key in its Supervisor configuration and lets you create multiple named route displays through its Web UI. Route settings are stored persistently in the add-on data volume and included in Home Assistant backups. The Dark setting uses HERE Maps JavaScript API v3.2's native HARP `mapnight` base layer and matching traffic overlay. Choose **Automatic (device setting)** to follow the browser/device light-or-dark preference, including changes while the display is open. Full-screen and Compact displays have independent visual and congestion-threshold settings.
 
+Each display also has its own **Refresh interval**. It re-runs the traffic-aware HERE route request, updating the route colouring, travel time, and delay. The default is every five minutes; choose Off to disable automatic refresh.
+
+Full-screen and Compact settings each include a **Route outline colour**. The outline is independent of the green-to-red live traffic colours drawn along the route, so it keeps the route legible over any map style.
+
+Each display has separate presentation settings: optional centered title (top or bottom), title size, font, and background; plus corner-card size and either rounded cards or a vignette treatment that fades into the corresponding map corner.
+
 ## Install locally
 
 1. Copy this entire `here-traffic-addon` folder to Home Assistant's `addons` directory, for example `/addons/here_traffic_dashboards`.
