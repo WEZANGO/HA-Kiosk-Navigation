@@ -1,6 +1,6 @@
 # HERE Traffic Dashboards
 
-This Home Assistant app (formerly called an add-on) stores one shared HERE API key in its Supervisor configuration and lets you create multiple named route displays through its Web UI. Route settings are stored persistently in the add-on data volume and included in Home Assistant backups. The Dark setting uses HERE's native night basemap. Full-screen and Compact displays have independent visual and congestion-threshold settings.
+This Home Assistant app (formerly called an add-on) stores one shared HERE API key in its Supervisor configuration and lets you create multiple named route displays through its Web UI. Route settings are stored persistently in the add-on data volume and included in Home Assistant backups. The Dark setting uses HERE Maps JavaScript API v3.2's native HARP `mapnight` base layer and matching traffic overlay. Choose **Automatic (device setting)** to follow the browser/device light-or-dark preference, including changes while the display is open. Full-screen and Compact displays have independent visual and congestion-threshold settings.
 
 ## Install locally
 

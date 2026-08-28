@@ -4,12 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>HERE Traffic Route</title>
-  <!-- HERE Maps JavaScript API v3.1 -->
-  <script src="https://js.api.here.com/v3/3.1/mapsjs-core.js"></script>
-  <script src="https://js.api.here.com/v3/3.1/mapsjs-service.js"></script>
-  <script src="https://js.api.here.com/v3/3.1/mapsjs-ui.js"></script>
-  <script src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js"></script>
-  <link rel="stylesheet" href="https://js.api.here.com/v3/3.1/mapsjs-ui.css" />
+  <!-- HERE Maps JavaScript API v3.2: HARP renderer is built into core. -->
+  <script src="https://js.api.here.com/v3/3.2/mapsjs-core.js"></script>
+  <script src="https://js.api.here.com/v3/3.2/mapsjs-service.js"></script>
+  <script src="https://js.api.here.com/v3/3.2/mapsjs-ui.js"></script>
+  <script src="https://js.api.here.com/v3/3.2/mapsjs-mapevents.js"></script>
+  <link rel="stylesheet" href="https://js.api.here.com/v3/3.2/mapsjs-ui.css" />
   <style>
     :root { color-scheme: dark; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     * { box-sizing: border-box; }
@@ -79,7 +79,7 @@
   <section id="settings" hidden>
     <form id="settings-form">
       <h1>HERE traffic route</h1>
-      <div class="build-version">Build 18</div>
+      <div class="build-version">Build 20</div>
       <p>Enter a HERE JavaScript/REST API key and two addresses or coordinates. Values are retained only in this browser.</p>
       <label>HERE API key <input id="api-key" type="password" required autocomplete="off" placeholder="Your HERE API key" /></label>
       <label>Origin <input id="origin" required placeholder="e.g. Dublin Airport, Ireland" /></label>
@@ -95,6 +95,7 @@
       </label>
       <label>Map appearance
         <select id="map-theme">
+          <option value="auto">Automatic (device setting)</option>
           <option value="dark" selected>Dark</option>
           <option value="light">Light</option>
         </select>
@@ -196,13 +197,11 @@
       function initMap(apiKey, theme) {
         platform = new H.service.Platform({ apikey: apiKey });
         const layers = platform.createDefaultLayers();
-        const vectorNormal = layers.vector && layers.vector.normal;
-        // Use HERE's native raster day/night basemaps. Raster night mode works
-        // with the standard v3.1 renderer and needs no HARP renderer module.
-        const rasterNormal = layers.raster && layers.raster.normal;
-        const lightLayer = rasterNormal?.map || vectorNormal?.map;
-        const darkLayer = rasterNormal?.mapnight || lightLayer;
-        const baseLayer = theme === 'dark' ? darkLayer : lightLayer;
+        const vectorNormal = layers.vector?.normal;
+        const vectorTraffic = layers.vector?.traffic;
+        // v3.2 runs HARP from mapsjs-core, so these native vector layers and
+        // their traffic overlays are an explicitly compatible day/night pair.
+        const baseLayer = theme === 'dark' ? vectorNormal?.mapnight : vectorNormal?.map;
         if (!baseLayer) throw new Error('HERE could not create a base map layer for this API key.');
         map = new H.Map($('map'), baseLayer, { pixelRatio: window.devicePixelRatio || 1 });
         // Surface tile/loading failures in the card instead of leaving a blank map.
@@ -215,7 +214,7 @@
         }
         // Layer names vary by HERE rendering engine/version. Never add an
         // undefined layer: that produces H.map.DataModel#add Argument #0 Undefined.
-        const trafficLayer = rasterNormal?.traffic || vectorNormal?.traffic || layers.vector?.traffic?.map;
+        const trafficLayer = theme === 'dark' ? vectorTraffic?.mapnight : vectorTraffic?.map;
         if (trafficLayer) map.addLayer(trafficLayer); // live flow/incident overlay
         new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
         ui = H.ui.UI.createDefault(map, layers);
@@ -351,13 +350,18 @@
         try {
           settings.hidden = true;
           if (map) { map.dispose(); map = null; }
-          initMap(config.apiKey, config.theme);
+          initMap(config.apiKey, resolveTheme(config.theme));
           await loadRoute(config);
         } catch (error) {
           console.error(error);
           setStatus(error.message || 'Unable to load traffic.', true);
           showSettings(config);
         }
+      }
+      function resolveTheme(theme) {
+        return theme === 'auto'
+          ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+          : theme;
       }
       form.addEventListener('submit', event => {
         event.preventDefault();
@@ -395,6 +399,11 @@
         settings.hidden = true;
         start(initial);
       } else if (initial.apiKey && initial.origin && initial.destination) start(initial); else showSettings(initial);
+      const colourScheme = window.matchMedia('(prefers-color-scheme: dark)');
+      colourScheme.addEventListener('change', () => {
+        const config = getConfig();
+        if (config.theme === 'auto' && config.apiKey && config.origin && config.destination) start(config);
+      });
     })();
   </script>
 </body>
