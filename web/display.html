@@ -16,21 +16,26 @@
     body { margin: 0; background: #111827; color: #f8fafc; }
     #app { height: 100vh; min-height: 300px; }
     #summary { position: fixed; z-index: 4; inset: 0; pointer-events: none; }
-    .metric { position: absolute; display: flex; flex-direction: column; min-width: var(--metric-width,208px); padding: var(--metric-padding,18px 22px); border: 1px solid rgba(148, 163, 184, .55); border-radius: 14px; background: rgba(15, 23, 42, .82); box-shadow: 0 5px 18px rgba(0,0,0,.36); backdrop-filter: blur(7px); }
+    .metric { position: absolute; display: flex; flex-direction: column; min-width: var(--metric-width,208px); padding: var(--metric-padding,18px 22px); border: 1px solid rgba(148, 163, 184, .55); border-radius: 14px; background: rgba(15, 23, 42, .82); box-shadow: 0 5px 18px rgba(0,0,0,.36); backdrop-filter: blur(7px); z-index: 7; }
+    .metric.pos-tl { top: 16px; left: 16px; } .metric.pos-tr { top: 16px; right: 16px; } .metric.pos-bl { bottom: 16px; left: 16px; } .metric.pos-br { bottom: 16px; right: 16px; }
+    .metric[hidden] { display: none; }
     .metric small { color: #cbd5e1; font-size: var(--metric-label,.98rem); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
     .metric strong { font-size: var(--metric-value,clamp(2.15rem, 4vw, 3.2rem)); line-height: 1.08; margin-top: 6px; }
-    .metric:nth-child(1) { top: 16px; left: 16px; }
-    .metric:nth-child(2) { top: 16px; right: 16px; }
-    .metric:nth-child(3) { bottom: 16px; left: 16px; }
-    .metric:nth-child(4) { bottom: 16px; right: 16px; }
+    #vignette-overlay { position: fixed; inset: 0; z-index: 6; pointer-events: none; }
+    #vignette-overlay::before, #vignette-overlay::after, #vignette-overlay .vig-left, #vignette-overlay .vig-right { content: ""; position: absolute; }
+    #vignette-overlay[data-vig="tl"]::before { inset: 0 50% 50% 0; background: radial-gradient(ellipse 100% 100% at 0 0, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vignette-inner,57%), transparent var(--vignette-outer,76%)); }
+    #vignette-overlay[data-vig="tr"]::before { inset: 0 0 50% 50%; background: radial-gradient(ellipse 100% 100% at 100% 0, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vignette-inner,57%), transparent var(--vignette-outer,76%)); }
+    #vignette-overlay[data-vig="bl"]::before { inset: 50% 50% 0 0; background: radial-gradient(ellipse 100% 100% at 0 100%, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vignette-inner,57%), transparent var(--vignette-outer,76%)); }
+    #vignette-overlay[data-vig="br"]::before { inset: 50% 0 0 50%; background: radial-gradient(ellipse 100% 100% at 100% 100%, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vignette-inner,57%), transparent var(--vignette-outer,76%)); }
+    #vignette-overlay[data-vig="top"]::before { inset: 0 0 auto 0; height: 55%; background: radial-gradient(ellipse 120% 100% at 50% 0, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vignette-inner,57%), transparent var(--vignette-outer,76%)); }
+    #vignette-overlay[data-vig="bottom"]::before { inset: auto 0 0 0; height: 55%; background: radial-gradient(ellipse 120% 100% at 50% 100%, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vignette-inner,57%), transparent var(--vignette-outer,76%)); }
+    #vignette-overlay[data-vig="left"]::before { inset: 0 auto 0 0; width: 55%; background: radial-gradient(ellipse 100% 120% at 0 50%, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vignette-inner,57%), transparent var(--vignette-outer,76%)); }
+    #vignette-overlay[data-vig="right"]::before { inset: 0 0 0 auto; width: 55%; background: radial-gradient(ellipse 100% 120% at 100% 50%, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vignette-inner,57%), transparent var(--vignette-outer,76%)); }
+    #vignette-overlay[data-vig="all"]::before { inset: 0; background: radial-gradient(ellipse 130% 130% at 50% 50%, transparent var(--vignette-inner,57%), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) calc(var(--vignette-inner,57%) + 12%), rgba(15,23,42,var(--vignette-alpha,.7)) var(--vignette-outer,76%)); }
     .metric.congestion-green { background: rgba(21, 128, 61, .92); border-color: rgba(134, 239, 172, .75); }
     .metric.congestion-amber { background: rgba(180, 83, 9, .94); border-color: rgba(253, 230, 138, .82); }
     .metric.congestion-red { background: rgba(185, 28, 28, .94); border-color: rgba(254, 202, 202, .82); }
     .metric.congestion-green small, .metric.congestion-amber small, .metric.congestion-red small { color: #fff; }
-    body.corner-vignette .metric { border: 0; border-radius: 0; box-shadow: none; backdrop-filter: none; background: radial-gradient(ellipse at var(--vignette-origin), rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7) * 0.74)) var(--vignette-inner,57%), transparent var(--vignette-outer,76%)); }
-    body.corner-vignette .metric:nth-child(1) { --vignette-origin: top left; } body.corner-vignette .metric:nth-child(2) { --vignette-origin: top right; } body.corner-vignette .metric:nth-child(3) { --vignette-origin: bottom left; } body.corner-vignette .metric:nth-child(4) { --vignette-origin: bottom right; }
-    body.corner-vignette .metric:nth-child(1) { top: 0; left: 0; } body.corner-vignette .metric:nth-child(2) { top: 0; right: 0; } body.corner-vignette .metric:nth-child(3) { bottom: 0; left: 0; } body.corner-vignette .metric:nth-child(4) { bottom: 0; right: 0; }
-    body.corner-vignette .metric { z-index: 7; }
     #display-title { position: fixed; z-index: 6; top: 18px; left: 50%; transform: translateX(-50%); max-width: 70vw; padding: 8px 18px; border-radius: 10px; background: rgba(15,23,42,.84); color: #fff; font: 700 2rem/1.15 system-ui,sans-serif; text-align: center; text-shadow: 0 1px 3px #000; }
     #display-title[hidden] { display: none; } body.title-bottom #display-title { top: auto; bottom: 18px; } #display-title { font-size: var(--title-size, 2rem); } body.title-no-background #display-title { background: transparent; box-shadow: none; } body.title-serif #display-title { font-family: Georgia,serif; } body.title-mono #display-title { font-family: ui-monospace,SFMono-Regular,monospace; }
     body.corner-vignette #display-title { top: 0; left: 0; transform: none; width: 100%; max-width: none; min-height: 82px; padding: 13px 20%; border-radius: 0; background: linear-gradient(to bottom, rgba(15,23,42,.9), rgba(15,23,42,.55) 55%, transparent); } body.corner-vignette.title-bottom #display-title { top: auto; bottom: 0; background: linear-gradient(to top, rgba(15,23,42,.9), rgba(15,23,42,.55) 55%, transparent); }
@@ -53,10 +58,8 @@
       .metric { min-width: 116px; padding: 9px 11px; }
       .metric small { font-size: .62rem; }
       .metric strong { font-size: 1.35rem; }
-      .metric:nth-child(1), .metric:nth-child(2) { top: 10px; }
-      .metric:nth-child(3), .metric:nth-child(4) { bottom: 10px; }
-      .metric:nth-child(1), .metric:nth-child(3) { left: 10px; }
-      .metric:nth-child(2), .metric:nth-child(4) { right: 10px; }
+      .metric.pos-tl { top: 10px; left: 10px; } .metric.pos-tr { top: 10px; right: 10px; }
+      .metric.pos-bl { bottom: 10px; left: 10px; } .metric.pos-br { bottom: 10px; right: 10px; }
       #route-actions { top: 76px; }
       #status { bottom: 86px; max-width: calc(100% - 40px); text-align: center; }
     }
@@ -69,11 +72,12 @@
 </head>
 <body>
   <main id="app">
+    <div id="vignette-overlay" hidden></div>
     <section id="summary" aria-live="polite">
-      <div id="trip-metric" class="metric"><small>Trip time</small><strong id="duration">—</strong></div>
-      <div class="metric"><small>Normal time</small><strong id="normal-duration">—</strong></div>
-      <div class="metric"><small>Traffic delay</small><strong id="delay">—</strong></div>
-      <div class="metric"><small>Distance</small><strong id="distance">—</strong></div>
+      <div id="tile-duration" class="metric" data-tile="duration"><small>Trip time</small><strong id="duration">—</strong></div>
+      <div id="tile-normal" class="metric" data-tile="normal"><small>Normal time</small><strong id="normal-duration">—</strong></div>
+      <div id="tile-delay" class="metric" data-tile="delay"><small>Traffic delay</small><strong id="delay">—</strong></div>
+      <div id="tile-distance" class="metric" data-tile="distance"><small>Distance</small><strong id="distance">—</strong></div>
       <span id="status">Configure a route to begin</span>
     </section>
     <div id="route-actions" aria-label="Route controls">
@@ -267,8 +271,8 @@
             : shape === 'rounded'
               ? '<rect x="3" y="3" width="32" height="32" rx="10" fill="#0f172a" stroke="#38bdf8" stroke-width="2.5"/>'
               : '<path d="M19 36C19 36 5 24.5 5 15.5 5 7.5 11.5 2 19 2s14 5.5 14 13.5C33 24.5 19 36 19 36z" fill="#0f172a" stroke="#38bdf8" stroke-width="2.5"/>';
-        const iconCenter = isPin ? 12.5 : 19;
-        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 38 38">${shapeEl}<g transform="translate(${iconCenter - 10}, ${iconCenter - 10}) scale(0.83)" fill="none" stroke="#7dd3fc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${markerIcon(iconName)}</g></svg>`;
+        const iconCx = 19, iconCy = isPin ? 15.5 : 19;
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 38 38">${shapeEl}<g transform="translate(${iconCx - 10}, ${iconCy - 10}) scale(0.83)" fill="none" stroke="#7dd3fc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${markerIcon(iconName)}</g></svg>`;
         const icon = new H.map.Icon(svg, { size: { w: size, h: size } });
         const anchor = isPin ? { x: size / 2, y: size - 2 } : { x: size / 2, y: size / 2 };
         return new H.map.Marker(position, { icon, anchor });
@@ -382,7 +386,7 @@
         const greenThreshold = Math.max(0, Math.min(100, Number.isFinite(requestedGreen) ? requestedGreen : 10));
         const amberThreshold = Math.max(greenThreshold, Math.min(100, Number.isFinite(requestedAmber) ? requestedAmber : 30));
         const congestion = delayPercent <= greenThreshold ? 'green' : delayPercent <= amberThreshold ? 'amber' : 'red';
-        const tripMetric = $('trip-metric');
+        const tripMetric = $('tile-duration');
         tripMetric.classList.remove('congestion-green', 'congestion-amber', 'congestion-red');
         tripMetric.classList.add(`congestion-${congestion}`);
         tripMetric.setAttribute('aria-label', `Trip time: ${congestion} traffic`);
@@ -463,6 +467,24 @@
           body.style.setProperty('--vignette-inner', (34 + s * 4.6).toFixed(0) + '%');
           body.style.setProperty('--vignette-outer', (58 + s * 3.6).toFixed(0) + '%');
         }
+        // Vignette overlay: separate layer behind the tiles, positionable.
+        const vignette = $('vignette-overlay');
+        const vigPos = ['tl', 'tr', 'bl', 'br', 'top', 'bottom', 'left', 'right', 'all'].includes(config.vignettePosition) ? config.vignettePosition : 'all';
+        vignette.hidden = config.metricStyle !== 'vignette';
+        vignette.dataset.vig = vigPos;
+        // Per-tile visibility and corner position.
+        const tileDefs = [
+          ['duration', 'tl'], ['normal', 'tr'], ['delay', 'bl'], ['distance', 'br']
+        ];
+        for (const [tile, defaultPos] of tileDefs) {
+          const el = $('tile-' + tile);
+          const show = config['show' + tile.charAt(0).toUpperCase() + tile.slice(1)] !== 'false';
+          el.hidden = !show;
+          if (show) {
+            const pos = ['tl', 'tr', 'bl', 'br'].includes(config['tile' + tile.charAt(0).toUpperCase() + tile.slice(1)]) ? config['tile' + tile.charAt(0).toUpperCase() + tile.slice(1)] : defaultPos;
+            el.className = el.className.replace(/\bpos-\w+\b/g, '').trim() + ' pos-' + pos;
+          }
+        }
         title.textContent = config.title || '';
         title.hidden = !config.title;
         body.classList.toggle('has-title', !!config.title);
@@ -503,7 +525,7 @@
         $('normal-duration').textContent = '—';
         $('delay').textContent = '—';
         $('distance').textContent = '—';
-        $('trip-metric').classList.remove('congestion-green', 'congestion-amber', 'congestion-red');
+        $('tile-duration').classList.remove('congestion-green', 'congestion-amber', 'congestion-red');
         setStatus('Configuration cleared');
         showSettings({ apiKey: '', origin: '', destination: '', scheme: 'ocean', theme: 'dark', zoomOut: '1.2', routeWidth: '12', borderWidth: '7', greenThreshold: '10', amberThreshold: '30' });
       });
