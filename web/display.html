@@ -27,9 +27,11 @@
     .metric.congestion-amber { background: rgba(180, 83, 9, .94); border-color: rgba(253, 230, 138, .82); }
     .metric.congestion-red { background: rgba(185, 28, 28, .94); border-color: rgba(254, 202, 202, .82); }
     .metric.congestion-green small, .metric.congestion-amber small, .metric.congestion-red small { color: #fff; }
-    body.corner-vignette .metric { border: 0; border-radius: 0; box-shadow: none; backdrop-filter: none; background: radial-gradient(ellipse at var(--vignette-origin), rgba(15,23,42,.92), rgba(15,23,42,.52) 46%, transparent 74%); }
+    body.corner-vignette .metric { border: 0; border-radius: 0; box-shadow: none; backdrop-filter: none; background: radial-gradient(ellipse at var(--vignette-origin), rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7) * 0.74)) var(--vignette-inner,57%), transparent var(--vignette-outer,76%)); }
     body.corner-vignette .metric:nth-child(1) { --vignette-origin: top left; } body.corner-vignette .metric:nth-child(2) { --vignette-origin: top right; } body.corner-vignette .metric:nth-child(3) { --vignette-origin: bottom left; } body.corner-vignette .metric:nth-child(4) { --vignette-origin: bottom right; }
     body.corner-vignette .metric:nth-child(1) { top: 0; left: 0; } body.corner-vignette .metric:nth-child(2) { top: 0; right: 0; } body.corner-vignette .metric:nth-child(3) { bottom: 0; left: 0; } body.corner-vignette .metric:nth-child(4) { bottom: 0; right: 0; }
+    body.corner-vignette:not(.title-bottom):not(body.compact) .metric:nth-child(-n+2) { top: 96px; border-top-left-radius: 18px; border-top-right-radius: 18px; }
+    body.corner-vignette.title-bottom:not(body.compact) .metric:nth-child(n+3) { bottom: 96px; border-bottom-left-radius: 18px; border-bottom-right-radius: 18px; }
     #display-title { position: fixed; z-index: 6; top: 18px; left: 50%; transform: translateX(-50%); max-width: 70vw; padding: 8px 18px; border-radius: 10px; background: rgba(15,23,42,.84); color: #fff; font: 700 2rem/1.15 system-ui,sans-serif; text-align: center; text-shadow: 0 1px 3px #000; }
     #display-title[hidden] { display: none; } body.title-bottom #display-title { top: auto; bottom: 18px; } #display-title { font-size: var(--title-size, 2rem); } body.title-no-background #display-title { background: transparent; box-shadow: none; } body.title-serif #display-title { font-family: Georgia,serif; } body.title-mono #display-title { font-family: ui-monospace,SFMono-Regular,monospace; }
     body.corner-vignette #display-title { top: 0; left: 0; transform: none; width: 100%; max-width: none; min-height: 82px; padding: 13px 20%; border-radius: 0; background: linear-gradient(to bottom, rgba(15,23,42,.9), rgba(15,23,42,.55) 55%, transparent); } body.corner-vignette.title-bottom #display-title { top: auto; bottom: 0; background: linear-gradient(to top, rgba(15,23,42,.9), rgba(15,23,42,.55) 55%, transparent); }
@@ -225,6 +227,14 @@
         if (trafficLayer) map.addLayer(trafficLayer); // live flow/incident overlay
         new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
         ui = H.ui.UI.createDefault(map, layers);
+        // Strip HERE's chrome (zoom buttons, map settings, scalebar) — the
+        // display is meant to be a passive kiosk view.
+        if (ui) {
+          for (const name of ['zoom', 'mapsettings', 'scalebar', 'panorama', 'contextmenu']) {
+            const control = ui.getControl(name);
+            if (control) ui.removeControl(name);
+          }
+        }
         routeGroup = new H.map.Group();
         map.addObject(routeGroup);
         map.getViewPort().resize();
@@ -258,7 +268,7 @@
             : shape === 'rounded'
               ? '<rect x="3" y="3" width="32" height="32" rx="10" fill="#0f172a" stroke="#38bdf8" stroke-width="2.5"/>'
               : '<path d="M19 36C19 36 5 24.5 5 15.5 5 7.5 11.5 2 19 2s14 5.5 14 13.5C33 24.5 19 36 19 36z" fill="#0f172a" stroke="#38bdf8" stroke-width="2.5"/>';
-        const iconCenter = isPin ? 13 : 19;
+        const iconCenter = isPin ? 12.5 : 19;
         const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 38 38">${shapeEl}<g transform="translate(${iconCenter - 10}, ${iconCenter - 10}) scale(0.83)" fill="none" stroke="#7dd3fc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${markerIcon(iconName)}</g></svg>`;
         const icon = new H.map.Icon(svg, { size: { w: size, h: size } });
         const anchor = isPin ? { x: size / 2, y: size - 2 } : { x: size / 2, y: size / 2 };
@@ -446,6 +456,14 @@
         const titleSize = titlePresets[config.titleSize] || `${num(config.titleSize, 5, 1, 10) * 0.4}rem`;
         body.style.setProperty('--title-size', titleSize);
         body.classList.toggle('corner-vignette', config.metricStyle === 'vignette');
+        if (config.metricStyle === 'vignette') {
+          // Sliders 1-10: opacity maps to peak alpha .45-.95, size to gradient reach.
+          const o = num(config.vignetteOpacity, 5, 1, 10) / 10;
+          const s = num(config.vignetteSize, 5, 1, 10);
+          body.style.setProperty('--vignette-alpha', (0.45 + o * 0.5).toFixed(2));
+          body.style.setProperty('--vignette-inner', (34 + s * 4.6).toFixed(0) + '%');
+          body.style.setProperty('--vignette-outer', (58 + s * 3.6).toFixed(0) + '%');
+        }
         title.textContent = config.title || '';
         title.hidden = !config.title;
         body.classList.toggle('title-bottom', config.titlePosition === 'bottom');

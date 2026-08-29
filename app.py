@@ -18,6 +18,7 @@ DEFAULTS = {
     "amberThreshold": "30", "refreshInterval": "5", "title": "",
     "titlePosition": "top", "titleSize": "medium", "titleBackground": "rounded",
     "titleFont": "system", "metricSize": "large", "metricStyle": "rounded",
+    "vignetteOpacity": "5", "vignetteSize": "5",
     "originIcon": "home", "destinationIcon": "flag",
     "originShape": "circle", "destinationShape": "circle",
 }
@@ -50,11 +51,14 @@ def clean_dashboard(payload: dict, existing: dict | None = None) -> dict:
     destination = str(payload.get("destination", "")).strip()
     if not name or not origin or not destination:
         raise ValueError("Name, origin, and destination are required.")
+    kind = str(payload.get("kind") or (existing or {}).get("kind") or "full").strip().lower()
+    if kind not in ("full", "compact"):
+        kind = "full"
     raw_id = str(existing["id"] if existing else (payload.get("id") or name)).lower()
     identifier = re.sub(r"[^a-z0-9-]+", "-", raw_id).strip("-")[:48]
     if not identifier:
         raise ValueError("The dashboard name does not produce a valid ID.")
-    values = {"id": identifier, "name": name, "origin": origin, "destination": destination}
+    values = {"id": identifier, "name": name, "origin": origin, "destination": destination, "kind": kind}
     values["scheme"] = str((existing or {}).get("scheme", "ocean"))
     # Marker settings are shared by both variants (not per-variant fields).
     for key in ("originIcon", "originShape", "destinationIcon", "destinationShape"):
@@ -109,7 +113,9 @@ function openModal(dashboard,variant){
     modalTitle.textContent=variant==='compact'?'New Card':'New Full Screen Map';
   }
   modal.hidden=false;
-}function closeModal(){modal.hidden=true;resetForm()}function showToast(message){const toast=document.createElement('div');toast.className='toast';toast.innerHTML=`<span class="checkmark">✓</span>${message}`;document.body.append(toast);setTimeout(()=>toast.remove(),1300)}function render(){list.innerHTML=items.length?'': '<p>No dashboards yet.</p>';for(const d of items){const full=route(`/display/${d.id}`),compact=route(`/card/${d.id}`);const row=document.createElement('div');row.className='row';row.innerHTML=`<div class="dash-top"><strong>${d.name}</strong><small>${d.origin} → ${d.destination}</small></div><div class="link-line"><span class="link-label">Full screen</span><a class="link-url" href="${full}" target="_blank" rel="noopener">${full}</a><button class="copy" type="button" data-copy="${full}" title="Copy link">⧉</button></div><div class="link-line"><span class="link-label">Compact</span><a class="link-url" href="${compact}" target="_blank" rel="noopener">${compact}</a><button class="copy" type="button" data-copy="${compact}" title="Copy link">⧉</button></div><div class="dash-actions"><button class="secondary">Edit</button><button class="danger">Delete</button></div>`;row.querySelector('.secondary').onclick=()=>openModal(d);row.querySelector('.danger').onclick=async()=>{if(confirm(`Delete ${d.name}?`)){await request(`/api/dashboards/${d.id}`,{method:'DELETE'});load()}};for(const btn of row.querySelectorAll('.copy'))btn.onclick=async()=>{const url=btn.dataset.copy;try{await navigator.clipboard.writeText(url)}catch(e){const ta=document.createElement('textarea');ta.value=url;document.body.append(ta);ta.select();document.execCommand('copy');ta.remove()}btn.textContent='✓';setTimeout(()=>btn.textContent='⧉',1200)};list.append(row)}}async function load(){items=await request('/api/dashboards');render()}f.onsubmit=async e=>{e.preventDefault();const id=f.elements['edit-id'].value;const data=Object.fromEntries(new FormData(f));const path=id?`/api/dashboards/${id}`:'/api/dashboards';await request(path,{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});showToast(id?'Saved':'Created');closeModal();load()};cancel.onclick=closeModal;document.querySelector('#new-full').onclick=()=>openModal(null,'full');document.querySelector('#new-compact').onclick=()=>openModal(null,'compact');modal.addEventListener('click',e=>{if(e.target===modal)closeModal()});
+}function closeModal(){modal.hidden=true;resetForm()}function showToast(message){const toast=document.createElement('div');toast.className='toast';toast.innerHTML=`<span class="checkmark">✓</span>${message}`;document.body.append(toast);setTimeout(()=>toast.remove(),1300)}function render(){list.innerHTML=items.length?'': '<p>No dashboards yet.</p>';for(const d of items){const full=route(`/display/${d.id}`),compact=route(`/card/${d.id}`);const row=document.createElement('div');row.className='row';row.innerHTML=`<div class="dash-top"><strong>${d.name}</strong><small>${d.kind==='compact'?'Card':'Full screen'}</small></div>${d.kind==='compact'
+? `<div class="link-line"><span class="link-label">Compact</span><a class="link-url" href="${compact}" target="_blank" rel="noopener">${compact}</a><button class="copy" type="button" data-copy="${compact}" title="Copy link">⧉</button></div>`
+: `<div class="link-line"><span class="link-label">Full screen</span><a class="link-url" href="${full}" target="_blank" rel="noopener">${full}</a><button class="copy" type="button" data-copy="${full}" title="Copy link">⧉</button></div>`}<div class="dash-actions"><button class="secondary">Edit</button><button class="danger">Delete</button></div>`;row.querySelector('.secondary').onclick=()=>openModal(d);row.querySelector('.danger').onclick=async()=>{if(confirm(`Delete ${d.name}?`)){await request(`/api/dashboards/${d.id}`,{method:'DELETE'});load()}};for(const btn of row.querySelectorAll('.copy'))btn.onclick=async()=>{const url=btn.dataset.copy;try{await navigator.clipboard.writeText(url)}catch(e){const ta=document.createElement('textarea');ta.value=url;document.body.append(ta);ta.select();document.execCommand('copy');ta.remove()}btn.textContent='✓';setTimeout(()=>btn.textContent='⧉',1200)};list.append(row)}}async function load(){items=await request('/api/dashboards');render()}f.onsubmit=async e=>{e.preventDefault();const id=f.elements['edit-id'].value;const data=Object.fromEntries(new FormData(f));if(!id&&f.dataset.variant)data.kind=f.dataset.variant;const path=id?`/api/dashboards/${id}`:'/api/dashboards';await request(path,{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});showToast(id?'Saved':'Created');closeModal();load()};cancel.onclick=closeModal;document.querySelector('#new-full').onclick=()=>openModal(null,'full');document.querySelector('#new-compact').onclick=()=>openModal(null,'compact');modal.addEventListener('click',e=>{if(e.target===modal)closeModal()});
 const LATLNG=/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/;
 function setupPicker(which){
   const root=document.querySelector('#pick-'+which),target=f.elements[which];
@@ -176,7 +182,7 @@ const editor=document.querySelector('#editor');
 const label=(name,text)=>`<span class="field-label">${text}</span>`;
 const select=(name,text,values,selected)=>`<label>${label(name,text)}<select name="${name}">${values.map(([value,label])=>`<option value="${value}"${value===selected?' selected':''}>${label}</option>`).join('')}</select></label>`;
 const input=(name,text,placeholder)=>`<label>${label(name,text)}<input name="${name}" placeholder="${placeholder}"></label>`;
-const slider=(name,text,min,max,step,selected,scale)=>`<label class="slider-field">${label(name,text)}<span class="slider-row"><input type="range" name="${name}" min="${min}" max="${max}" step="${step}" value="${scale[selected]??selected}"><output>${scale[selected]??selected}</output></span></label>`;
+const slider=(name,text,min,max,step,selected,scale)=>{scale=scale||{};return `<label class="slider-field">${label(name,text)}<span class="slider-row"><input type="range" name="${name}" min="${min}" max="${max}" step="${step}" value="${scale[selected]??selected}"><output>${scale[selected]??selected}</output></span></label>`};
 const options={
  position:[['top','Top middle'],['bottom','Bottom middle']],
  background:[['rounded','Rounded background'],['none','No background']],
@@ -205,7 +211,7 @@ const sizeMap={small:3,medium:5,large:7};
 const previewBox=(prefix)=>`<div class="preview wide" data-preview="${prefix}"><div class="preview-screen"><div class="preview-title"></div><div class="preview-metric"><small>DELAY</small><strong>+4 min</strong></div></div><span class="preview-caption">Live preview</span></div>`;
 for(const [prefix,heading] of [['full','Full-screen presentation'],['compact','Compact presentation']]){
   const anchor=[...editor.querySelectorAll('h3')].find(node=>node.textContent.startsWith(prefix==='full'?'Full':'Compact'));
-  anchor.insertAdjacentHTML('afterend', `<h4 class="wide">${heading}</h4>${input(prefix+'Title','Optional title','e.g. Morning commute')}${select(prefix+'TitlePosition','Title position',options.position,'top')}${slider(prefix+'TitleSize','Title size',1,10,1,'medium',sizeMap)}${select(prefix+'TitleBackground','Title background',options.background,'rounded')}${select(prefix+'TitleFont','Title font',options.font,'system')}${slider(prefix+'MetricSize','Card size',1,10,1,'large',sizeMap)}${select(prefix+'MetricStyle','Card style',options.cardStyle,'rounded')}${previewBox(prefix)}`);
+  anchor.insertAdjacentHTML('afterend', `<h4 class="wide">${heading}</h4>${input(prefix+'Title','Optional title','e.g. Morning commute')}${select(prefix+'TitlePosition','Title position',options.position,'top')}${slider(prefix+'TitleSize','Title size',1,10,1,'medium',sizeMap)}${select(prefix+'TitleBackground','Title background',options.background,'rounded')}${select(prefix+'TitleFont','Title font',options.font,'system')}${slider(prefix+'MetricSize','Card size',1,10,1,'large',sizeMap)}${select(prefix+'MetricStyle','Card style',options.cardStyle,'rounded')}${slider(prefix+'VignetteOpacity','Vignette opacity',1,10,1,'5',null)}${slider(prefix+'VignetteSize','Vignette size',1,10,1,'5',null)}${previewBox(prefix)}`);
 }
 // Shared marker settings: hidden inputs hold the values; visible pickers toggle them.
 const markerSection=document.createElement('div');
