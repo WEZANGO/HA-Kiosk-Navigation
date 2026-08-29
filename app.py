@@ -110,12 +110,8 @@ function openModal(dashboard,variant){
   if(dashboard){
     for(const[k,v]of Object.entries(dashboard))field(k,v);
     field('edit-id',dashboard.id);
-    for(const prefix of ['full','compact'])for(const [key] of TILE_DEFS){
-      const cb=editor.querySelector(`[data-tilecheck="${prefix}${key}"]`);
-      const hid=editor.elements[prefix+'Show'+key];
-      if(cb&&hid){cb.checked=hid.value!=='false';}
-      populateTileCorners(prefix);
-    }
+    for(const which of ['origin','destination'])markerButtonState(which);
+    for(const prefix of ['full','compact'])populateTileCorners(prefix);
     modalTitle.textContent=`Edit: ${dashboard.name}`;
     f.dataset.variant=dashboard.kind==='compact'?'compact':'full';
   }else{
@@ -229,11 +225,10 @@ for(const [prefix,heading] of [['full','Full-screen presentation'],['compact','C
   const anchor=[...editor.querySelectorAll('h3')].find(node=>node.textContent.startsWith(prefix==='full'?'Full':'Compact'));
   anchor.insertAdjacentHTML('afterend', `<h4 class="wide">${heading}</h4>${input(prefix+'Title','Optional title','e.g. Morning commute')}${select(prefix+'TitlePosition','Title position',options.position,'top')}${slider(prefix+'TitleSize','Title size',1,10,1,'medium',sizeMap)}${select(prefix+'TitleBackground','Title background',options.background,'rounded')}${select(prefix+'TitleFont','Title font',options.font,'system')}${slider(prefix+'MetricSize','Card size',1,10,1,'large',sizeMap)}${select(prefix+'MetricStyle','Card style',options.cardStyle,'rounded')}${select(prefix+'VignettePosition','Vignette position',options.vignettePosition,'all')}${slider(prefix+'VignetteOpacity','Vignette opacity',1,10,1,'5',null)}${slider(prefix+'VignetteSize','Vignette size',1,10,1,'5',null)}${tileControls(prefix)}${previewBox(prefix)}`);
 }
-// Per-tile show/hide checkboxes + per-corner tile pickers.
+// Per-corner tile pickers: checkbox enables the corner, select chooses its tile.
 function tileControls(prefix){
-  const checks=TILE_DEFS.map(([key,label])=>`<div class="tile-control"><label class="tile-show"><input type="checkbox" data-tilecheck="${prefix}${key}" checked> ${label}</label></div>`).join('');
-  const corners=CORNERS.map(([value,cLabel])=>`<div class="tile-control"><span class="field-label">${cLabel}</span><select data-corner="${prefix}${value}"><option value="">—</option>${TILE_DEFS.map(([key,label])=>`<option value="${key}">${label}</option>`).join('')}</select></div>`).join('');
-  return `<div class="tile-grid wide">${checks}${corners}</div>`;
+  const corners=CORNERS.map(([value,cLabel])=>`<div class="tile-control"><label class="tile-show"><input type="checkbox" data-cornercheck="${prefix}${value}" checked> ${cLabel}</label><select data-corner="${prefix}${value}"><option value="">—</option>${TILE_DEFS.map(([key,label])=>`<option value="${key}">${label}</option>`).join('')}</select></div>`).join('');
+  return `<div class="tile-grid wide">${corners}</div>`;
 }
 // Shared marker settings: hidden inputs hold the values; visible pickers toggle them.
 const markerSection=document.createElement('div');
@@ -250,11 +245,20 @@ for(const which of ['origin','destination']){
 // Tile show/hide checkboxes + corner pickers -> hidden inputs named <prefix>Show<Key> / <prefix>Tile<Key>
 function tileCornerSelects(prefix){return [...editor.querySelectorAll(`select[data-corner^="${prefix}"]`)];}
 function syncTileHidden(prefix){
-  const used=new Set(tileCornerSelects(prefix).filter(s=>s.value).map(s=>s.dataset.corner.slice(prefix.length)));
+  const selects=tileCornerSelects(prefix);
+  const used=new Set(selects.filter(s=>s.value).map(s=>s.dataset.corner.slice(prefix.length)));
+  // Assigned tiles: position = their corner, visible = corner checkbox checked.
+  for(const sel of selects){
+    if(!sel.value)continue;
+    const corner=sel.dataset.corner.slice(prefix.length);
+    editor.elements[prefix+'Tile'+sel.value].value=corner;
+    editor.elements[prefix+'Show'+sel.value].value=editor.querySelector(`[data-cornercheck="${prefix}${corner}"]`).checked?'true':'false';
+  }
+  // Unassigned tiles: hidden, parked on a free corner for their position value.
   for(const [key] of TILE_DEFS){
-    const sel=tileCornerSelects(prefix).find(s=>s.value===key);
-    if(sel){editor.elements[prefix+'Tile'+key].value=sel.dataset.corner.slice(prefix.length);continue;}
-    // Unassigned tile: fall back to its default, or any corner not taken by another tile.
+    const sel=selects.find(s=>s.value===key);
+    if(sel)continue;
+    editor.elements[prefix+'Show'+key].value='false';
     const fallback=[TILE_DEFAULT_POS[key],...CORNERS.map(c=>c[0])].find(c=>!used.has(c));
     if(fallback){editor.elements[prefix+'Tile'+key].value=fallback;used.add(fallback);}
   }
@@ -265,25 +269,33 @@ function populateTileCorners(prefix){
     const sel=tileCornerSelects(prefix).find(s=>s.dataset.corner===prefix+value);
     if(sel)sel.value=key;
   }
+  // Corner checkbox reflects whether the tile assigned to it is shown.
+  for(const sel of tileCornerSelects(prefix)){
+    const corner=sel.dataset.corner.slice(prefix.length);
+    const key=sel.value;
+    const check=editor.querySelector(`[data-cornercheck="${prefix}${corner}"]`);
+    check.checked=key?editor.elements[prefix+'Show'+key].value!=='false':true;
+  }
+  syncTileHidden(prefix);
 }
 for(const prefix of ['full','compact']){
   for(const [key] of TILE_DEFS){
-    const hidden=document.createElement('input');
-    hidden.type='hidden';hidden.name=prefix+'Show'+key;hidden.value='true';
-    editor.appendChild(hidden);
-    const posHidden=document.createElement('input');
-    posHidden.type='hidden';posHidden.name=prefix+'Tile'+key;posHidden.value=TILE_DEFAULT_POS[key];
-    editor.appendChild(posHidden);
-    const checkbox=editor.querySelector(`[data-tilecheck="${prefix}${key}"]`);
-    checkbox.addEventListener('change',()=>hidden.value=checkbox.checked?'true':'false');
+    for(const [name,value] of [[prefix+'Show'+key,'true'],[prefix+'Tile'+key,TILE_DEFAULT_POS[key]]]){
+      const hidden=document.createElement('input');
+      hidden.type='hidden';hidden.name=name;hidden.value=value;
+      editor.appendChild(hidden);
+    }
   }
   for(const sel of tileCornerSelects(prefix)){
+    const corner=sel.dataset.corner.slice(prefix.length);
+    const check=editor.querySelector(`[data-cornercheck="${prefix}${corner}"]`);
+    check.addEventListener('change',()=>syncTileHidden(prefix));
     sel.addEventListener('change',()=>{
       if(sel.value){for(const other of tileCornerSelects(prefix))if(other!==sel&&other.value===sel.value)other.value='';}
       syncTileHidden(prefix);
     });
-    syncTileHidden(prefix);
   }
+  syncTileHidden(prefix);
 }
 function markerButtonState(which){
   const hidden=n=>editor.elements[which+n];
