@@ -230,6 +230,40 @@
         map.getViewPort().resize();
         window.addEventListener('resize', () => map.getViewPort().resize());
       }
+      const MARKER_ICONS = {
+        home:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>',
+        flag:'<path d="M5 21V4"/><path d="M5 4h13l-2.5 4L18 12H5"/>',
+        briefcase:'<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/>',
+        car:'<path d="M5 16l1.5-5.5A2 2 0 0 1 8.4 9h7.2a2 2 0 0 1 1.9 1.5L19 16"/><rect x="3" y="16" width="18" height="4" rx="1.5"/><circle cx="7.5" cy="20" r="1"/><circle cx="16.5" cy="20" r="1"/>',
+        star:'<path d="M12 3l2.7 5.7 6.3.8-4.6 4.3 1.2 6.2L12 17l-5.6 3 1.2-6.2L3 9.5l6.3-.8z"/>',
+        heart:'<path d="M12 21C7 16.5 3 13.3 3 9.3 3 6.4 5.2 4 8 4c1.6 0 3.1.8 4 2 0.9-1.2 2.4-2 4-2 2.8 0 5 2.4 5 5.3 0 4-4 7.2-9 11.7z"/>',
+        plus:'<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M12 8v8M8 12h8"/>',
+        cart:'<circle cx="9" cy="20" r="1.5"/><circle cx="17" cy="20" r="1.5"/><path d="M3 4h2l2.5 11h10L20 8H6"/>',
+        pin:'<path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>',
+        bolt:'<path d="M13 2 4 14h6l-1 8 9-12h-6z"/>',
+        school:'<path d="M12 3 2 8l10 5 10-5z"/><path d="M6 10.5V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-5.5"/>',
+        train:'<rect x="5" y="3" width="14" height="14" rx="3"/><path d="M5 11h14"/><circle cx="9" cy="14.5" r=".8"/><circle cx="15" cy="14.5" r=".8"/><path d="M8 20l-1.5 2M16 20l1.5 2"/>'
+      };
+      function markerIcon(iconName) { return MARKER_ICONS[iconName] || MARKER_ICONS.pin; }
+      function makeMarker(position, iconName, shape) {
+        shape = ['circle', 'square', 'rounded', 'pin'].includes(shape) ? shape : 'circle';
+        const size = shape === 'pin' ? 44 : 38;
+        const isPin = shape === 'pin';
+        // SVG bubble in the chosen shape with the chosen glyph; anchored so the
+        // bubble tip (pin) or center (others) sits exactly on the coordinate.
+        const shapeEl = shape === 'circle'
+          ? '<circle cx="19" cy="19" r="16" fill="#0f172a" stroke="#38bdf8" stroke-width="2.5"/>'
+          : shape === 'square'
+            ? '<rect x="3" y="3" width="32" height="32" rx="3" fill="#0f172a" stroke="#38bdf8" stroke-width="2.5"/>'
+            : shape === 'rounded'
+              ? '<rect x="3" y="3" width="32" height="32" rx="10" fill="#0f172a" stroke="#38bdf8" stroke-width="2.5"/>'
+              : '<path d="M19 36C19 36 5 24.5 5 15.5 5 7.5 11.5 2 19 2s14 5.5 14 13.5C33 24.5 19 36 19 36z" fill="#0f172a" stroke="#38bdf8" stroke-width="2.5"/>';
+        const iconCenter = isPin ? 13 : 19;
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 38 38">${shapeEl}<g transform="translate(${iconCenter - 10}, ${iconCenter - 10}) scale(0.83)" fill="none" stroke="#7dd3fc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${markerIcon(iconName)}</g></svg>`;
+        const icon = new H.map.Icon(svg, { size: { w: size, h: size } });
+        const anchor = isPin ? { x: size / 2, y: size - 2 } : { x: size / 2, y: size / 2 };
+        return new H.map.Marker(position, { icon, anchor });
+      }
       async function geocode(query, apiKey) {
         // Accept raw "lat,lng" coordinates (from the map picker) without geocoding.
         const coords = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(query);
@@ -310,9 +344,7 @@
             style: { strokeColor: trafficColour(segment.ratio), lineWidth: routeWidth, lineCap: 'round', lineJoin: 'round' }
           });
         }));
-        routeGroup.addObjects([
-          new H.map.Marker(origin), new H.map.Marker(destination)
-        ]);
+        routeGroup.addObjects([makeMarker(origin, config.originIcon, config.originShape), makeMarker(destination, config.destinationIcon, config.destinationShape)]);
         const bounds = routeGroup.getBoundingBox();
         // Expand the geographic bounds before fitting. This is reliable even
         // while HERE is still calculating the zoom level for the new route.
@@ -356,6 +388,7 @@
         const channel = index => Math.round(from[index] + ((to[index] - from[index]) * amount));
         return `rgb(${channel(0)}, ${channel(1)}, ${channel(2)})`;
       }
+      let lastRouteConfig = null;
       async function start(config) {
         try {
           applyPresentation(config);
@@ -363,11 +396,23 @@
           if (map) { map.dispose(); map = null; }
           initMap(config.apiKey, resolveTheme(config.theme));
           await loadRoute(config);
+          lastRouteConfig = config;
           scheduleRefresh(config);
         } catch (error) {
           console.error(error);
           setStatus(error.message || 'Unable to load traffic.', true);
           showSettings(config);
+        }
+      }
+      // Timed refresh: reuse the existing map and only replace the route
+      // overlay + metrics, so the view never flashes or re-fits.
+      async function refreshRoute() {
+        if (!lastRouteConfig || !map) return start(lastRouteConfig);
+        try {
+          await loadRoute(lastRouteConfig);
+        } catch (error) {
+          console.error(error);
+          setStatus(error.message || 'Refresh failed — keeping the previous route.', true);
         }
       }
       function resolveTheme(theme) {
@@ -412,7 +457,7 @@
         clearInterval(refreshTimer);
         const minutes = Number(config.refreshInterval);
         if (Number.isFinite(minutes) && minutes > 0) {
-          refreshTimer = setInterval(() => start(config), minutes * 60 * 1000);
+          refreshTimer = setInterval(() => refreshRoute(), minutes * 60 * 1000);
         }
       }
       form.addEventListener('submit', event => {
