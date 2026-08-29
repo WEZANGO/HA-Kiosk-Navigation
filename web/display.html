@@ -231,6 +231,9 @@
         window.addEventListener('resize', () => map.getViewPort().resize());
       }
       async function geocode(query, apiKey) {
+        // Accept raw "lat,lng" coordinates (from the map picker) without geocoding.
+        const coords = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(query);
+        if (coords) return { lat: Number(coords[1]), lng: Number(coords[2]) };
         const url = new URL('https://geocode.search.hereapi.com/v1/geocode');
         url.search = new URLSearchParams({ q: query, apiKey });
         const response = await fetch(url);
