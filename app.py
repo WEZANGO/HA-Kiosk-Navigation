@@ -20,7 +20,7 @@ DEFAULTS = {
     "titleFont": "system", "metricSize": "large", "metricStyle": "rounded",
     "vignetteOpacity": "5", "vignetteSize": "5", "vignettePosition": "all",
     "showDuration": "true", "showNormal": "true", "showDelay": "true", "showDistance": "true",
-    "tileDuration": "tl", "tileNormal": "tr", "tileDelay": "bl", "tileDistance": "br",
+    "tileDuration": "bl", "tileNormal": "tl", "tileDelay": "br", "tileDistance": "tr",
     "originIcon": "home", "destinationIcon": "flag",
     "originShape": "circle", "destinationShape": "circle",
 }
@@ -81,8 +81,8 @@ def clean_dashboard(payload: dict, existing: dict | None = None) -> dict:
 def admin_page() -> str:
     return """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HERE Traffic Dashboards</title><style>
 body{max-width:940px;margin:0 auto;padding:28px;font:16px system-ui,sans-serif;background:#0f172a;color:#f8fafc}h1{margin-bottom:4px}p{color:#cbd5e1}section{margin:24px 0;padding:22px;border:1px solid #334155;border-radius:12px;background:#1e293b}form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}label{display:grid;gap:5px;color:#cbd5e1;font-size:.9rem}input,select,button{padding:10px;border-radius:7px;font:inherit}input,select{border:1px solid #64748b;background:#0f172a;color:white}button{border:0;background:#38bdf8;color:#082f49;font-weight:700;cursor:pointer}.wide{grid-column:1/-1}.row{display:block;border-top:1px solid #334155;padding:15px 0}.row:first-child{border:0}.row strong{font-size:1.05rem}.dash-top{display:flex;align-items:baseline;gap:12px;margin-bottom:8px}.dash-top small{color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.link-line{display:flex;align-items:center;gap:10px;margin:6px 0}.link-label{min-width:88px;color:#94a3b8;font-size:.84rem;flex-shrink:0}.link-url{flex:1;color:#7dd3fc;font-size:.86rem;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.link-url:hover{text-decoration:underline}.copy{flex-shrink:0;background:#334155;color:#e2e8f0;padding:6px 12px;font-size:.9rem;cursor:pointer;border-radius:6px;border:0}.copy:hover{background:#475569}.dash-actions{display:flex;gap:10px;margin-top:10px}.dash-actions button{padding:8px 18px}.secondary{background:#334155;color:#fff}.danger{background:#b91c1c;color:#fff}code{padding:2px 5px;background:#0f172a;border-radius:4px}@media(max-width:600px){form{grid-template-columns:1fr}#editor [data-variant]{grid-template-columns:1fr}.row strong{min-width:100%}}.modal-overlay{position:fixed;inset:0;z-index:100;display:grid;justify-items:center;align-items:start;padding:20px;background:rgba(3,7,18,.85);overflow-y:auto}.modal-overlay[hidden]{display:none}.modal-content{width:min(100%,680px);max-height:calc(100vh-40px);overflow:auto;padding:24px;border:1px solid #475569;border-radius:14px;background:#1e293b;box-shadow:0 20px 60px rgba(0,0,0,.4)}.toast{position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:200;display:flex;align-items:center;gap:10px;padding:14px 24px;border-radius:10px;background:#166534;color:#bbf7d0;font-weight:700;font-size:1.05rem;box-shadow:0 8px 30px rgba(0,0,0,.5);animation:toast-in .3s ease-out,toast-out .3s .9s ease-in forwards}.toast .checkmark{font-size:1.3rem}@keyframes toast-in{from{opacity:0;transform:translateX(-50%) translateY(-12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}@keyframes toast-out{from{opacity:1}to{opacity:0;transform:translateX(-50%) translateY(-12px)}}.wide-button{display:inline-block;padding:12px 24px;border:2px dashed #64748b;border-radius:10px;background:transparent;color:#38bdf8;font:inherit;font-weight:700;cursor:pointer;width:auto}.new-buttons{display:flex;gap:12px;flex-wrap:wrap}.new-buttons .wide-button{flex:1}
-form[data-variant="full"] [data-variant="compact"]{display:none}
-form[data-variant="compact"] [data-variant="full"]{display:none}#editor [data-variant]{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.modal-buttons{display:flex;gap:10px;grid-column:1/-1}
+#editor[data-variant="full"] [data-variant="compact"]{display:none}
+#editor[data-variant="compact"] [data-variant="full"]{display:none}#editor [data-variant]{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.modal-buttons{display:flex;gap:10px;grid-column:1/-1}
 .field-label{font-weight:600}.tile-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.tile-control{display:grid;gap:6px;background:#0f172a;border:1px solid #334155;border-radius:9px;padding:10px}.tile-show{display:flex;align-items:center;gap:8px;font-size:.88rem;color:#e2e8f0}.tile-show input{width:auto;margin:0;accent-color:#38bdf8}.tile-control select{margin:0}.pick-field{display:grid;gap:6px;margin:2px 0 8px}.icon-grid{display:flex;gap:6px;flex-wrap:wrap}.icon-choice{width:44px;height:44px;display:grid;place-items:center;background:#0f172a;border:1px solid #64748b;border-radius:9px;color:#cbd5e1;cursor:pointer;padding:0}.icon-choice svg{width:22px;height:22px}.icon-choice:hover{border-color:#94a3b8}.icon-choice.selected{background:#38bdf8;border-color:#38bdf8;color:#082f49}.shape-row{display:flex;gap:6px;flex-wrap:wrap}.shape-choice{background:#0f172a;border:1px solid #64748b;border-radius:7px;color:#cbd5e1;font:inherit;font-size:.86rem;padding:7px 13px;cursor:pointer}.shape-choice:hover{border-color:#94a3b8}.shape-choice.selected{background:#38bdf8;border-color:#38bdf8;color:#082f49;font-weight:600}.pick{grid-column:1/-1;margin:2px 0 6px}.pick-head{display:flex;align-items:center;gap:8px;background:#0f172a;border:1px solid #64748b;border-radius:9px;padding:11px 14px;color:#cbd5e1;font:inherit;font-size:.92rem;cursor:pointer;width:100%;text-align:left}.pick-head b{color:#f8fafc}.pick-head .chev{margin-left:auto;transition:transform .2s}.pick.open .chev{transform:rotate(180deg)}.pick-body{display:none;margin-top:10px;padding:12px;border:1px solid #334155;border-radius:10px;background:#0b1222}.pick.open .pick-body{display:block}.pick-tabs{display:flex;gap:8px;margin-bottom:10px}.pick-tabs button{background:#334155;color:#e2e8f0;font:inherit;font-size:.88rem;padding:7px 14px;border-radius:7px;cursor:pointer}.pick-tabs button[aria-selected="true"]{background:#38bdf8;color:#082f49;font-weight:700}.pick-search{display:flex;gap:8px}.pick-search input{flex:1}.pick-search button{padding:10px 16px}.pick-results{margin:10px 0 0;padding:0;list-style:none;display:grid;gap:6px;max-height:180px;overflow:auto}.pick-results button{display:block;width:100%;text-align:left;background:#0f172a;border:1px solid #334155;color:#e2e8f0;font:inherit;font-size:.88rem;padding:9px 12px;border-radius:8px;cursor:pointer}.pick-results button:hover{border-color:#38bdf8}.pick-results .sub{display:block;color:#94a3b8;font-size:.8rem}.pick-status{margin:10px 0 0;color:#94a3b8;font-size:.86rem}.pick-status.error{color:#fca5a5}.pick-map-wrap{position:relative;height:320px;border-radius:8px;overflow:hidden;border:1px solid #334155}.pick-hint{position:absolute;z-index:1000;top:10px;left:50%;transform:translateX(-50%);padding:6px 14px;border-radius:999px;background:rgba(15,23,42,.88);color:#cbd5e1;font-size:.8rem;pointer-events:none;white-space:nowrap}.pick-actions{display:flex;align-items:center;gap:10px;margin-top:10px}.pick-coords{flex:1;color:#94a3b8;font-size:.84rem;font-family:ui-monospace,monospace}.pick-actions .use{background:#38bdf8;color:#082f49;font-weight:700;padding:9px 16px;cursor:pointer;border:0;border-radius:7px;font:inherit}.pick-actions .use:disabled{opacity:.4;cursor:not-allowed}.leaflet-container{background:#0b1222;font:inherit}
 .slider-field .slider-row{display:flex;align-items:center;gap:12px}.slider-field input[type=range]{flex:1;padding:0;border:0;background:transparent;accent-color:#38bdf8;height:24px}.slider-field output{min-width:26px;text-align:center;background:#0f172a;border:1px solid #334155;border-radius:6px;padding:4px 6px;font-size:.85rem;color:#e2e8f0}
 .preview{margin-top:14px}.preview-screen{position:relative;height:150px;border-radius:10px;border:1px solid #334155;overflow:hidden;background:linear-gradient(135deg,#0c1a30 0%,#0f172a 55%,#16283f 100%)}.preview-screen::after{content:"";position:absolute;left:8%;right:8%;top:52%;height:7px;border-radius:6px;background:linear-gradient(90deg,var(--route-colour,#38bdf8) 0%,#fbbf24 55%,#ef4444 100%);box-shadow:0 0 0 3px rgba(8,15,35,.9)}.preview-title{position:absolute;top:10px;left:50%;transform:translateX(-50%);padding:3px 10px;border-radius:6px;background:rgba(15,23,42,.85);color:#fff;font-weight:700;white-space:nowrap}.preview-metric{position:absolute;right:10px;bottom:10px;padding:8px 12px;border-radius:9px;background:rgba(15,23,42,.88);border:1px solid rgba(255,255,255,.14);color:#fff;display:grid;gap:2px;text-align:center}.preview-metric small{color:#cbd5e1;font-weight:700;text-transform:uppercase;letter-spacing:.08em}.preview-metric strong{color:#fff;line-height:1}.preview-metric.vignette{border:0;border-radius:0;background:radial-gradient(ellipse at bottom right,rgba(15,23,42,.95),rgba(15,23,42,.5) 70%,transparent)}.preview-caption{display:block;margin-top:6px;color:#94a3b8;font-size:.78rem}</style><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" /><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script></head><body>
@@ -114,10 +114,12 @@ function openModal(dashboard,variant){
       const cb=editor.querySelector(`[data-tilecheck="${prefix}${key}"]`);
       const hid=editor.elements[prefix+'Show'+key];
       if(cb&&hid){cb.checked=hid.value!=='false';}
+      populateTileCorners(prefix);
     }
     modalTitle.textContent=`Edit: ${dashboard.name}`;
     f.dataset.variant=dashboard.kind==='compact'?'compact':'full';
   }else{
+    for(const prefix of ['full','compact'])populateTileCorners(prefix);
     f.dataset.variant=variant||'';
     modalTitle.textContent=variant==='compact'?'New Card':'New Full Screen Map';
   }
@@ -220,13 +222,18 @@ const ICONS={
 const sizeMap={small:3,medium:5,large:7};
 const TILE_DEFS=[['Duration','Trip time'],['Normal','Normal time'],['Delay','Traffic delay'],['Distance','Distance']];
 const previewBox=(prefix)=>`<div class="preview wide" data-preview="${prefix}"><div class="preview-screen"><div class="preview-title"></div><div class="preview-metric"><small>DELAY</small><strong>+4 min</strong></div></div><span class="preview-caption">Live preview</span></div>`;
+// Defaults: top left = normal time, top right = distance, bottom left = trip time, bottom right = traffic delay.
+const TILE_DEFAULT_POS={Duration:'bl',Normal:'tl',Delay:'br',Distance:'tr'};
+const CORNERS=[['tl','Top left'],['tr','Top right'],['bl','Bottom left'],['br','Bottom right']];
 for(const [prefix,heading] of [['full','Full-screen presentation'],['compact','Compact presentation']]){
   const anchor=[...editor.querySelectorAll('h3')].find(node=>node.textContent.startsWith(prefix==='full'?'Full':'Compact'));
   anchor.insertAdjacentHTML('afterend', `<h4 class="wide">${heading}</h4>${input(prefix+'Title','Optional title','e.g. Morning commute')}${select(prefix+'TitlePosition','Title position',options.position,'top')}${slider(prefix+'TitleSize','Title size',1,10,1,'medium',sizeMap)}${select(prefix+'TitleBackground','Title background',options.background,'rounded')}${select(prefix+'TitleFont','Title font',options.font,'system')}${slider(prefix+'MetricSize','Card size',1,10,1,'large',sizeMap)}${select(prefix+'MetricStyle','Card style',options.cardStyle,'rounded')}${select(prefix+'VignettePosition','Vignette position',options.vignettePosition,'all')}${slider(prefix+'VignetteOpacity','Vignette opacity',1,10,1,'5',null)}${slider(prefix+'VignetteSize','Vignette size',1,10,1,'5',null)}${tileControls(prefix)}${previewBox(prefix)}`);
 }
-// Per-tile show/hide + corner position controls
+// Per-tile show/hide checkboxes + per-corner tile pickers.
 function tileControls(prefix){
-  return `<div class="tile-grid wide">${TILE_DEFS.map(([key,label])=>`<div class="tile-control"><label class="tile-show"><input type="checkbox" data-tilecheck="${prefix}${key}" checked> ${label}</label><select name="${prefix}Tile${key}"><option value="tl">Top left</option><option value="tr">Top right</option><option value="bl">Bottom left</option><option value="br">Bottom right</option></select></div>`).join('')}</div>`;
+  const checks=TILE_DEFS.map(([key,label])=>`<div class="tile-control"><label class="tile-show"><input type="checkbox" data-tilecheck="${prefix}${key}" checked> ${label}</label></div>`).join('');
+  const corners=CORNERS.map(([value,cLabel])=>`<div class="tile-control"><span class="field-label">${cLabel}</span><select data-corner="${prefix}${value}"><option value="">—</option>${TILE_DEFS.map(([key,label])=>`<option value="${key}">${label}</option>`).join('')}</select></div>`).join('');
+  return `<div class="tile-grid wide">${checks}${corners}</div>`;
 }
 // Shared marker settings: hidden inputs hold the values; visible pickers toggle them.
 const markerSection=document.createElement('div');
@@ -240,14 +247,42 @@ for(const which of ['origin','destination']){
     editor.appendChild(hidden);
   }
 }
-// Tile show/hide checkboxes -> hidden inputs named <prefix>Show<Key>
+// Tile show/hide checkboxes + corner pickers -> hidden inputs named <prefix>Show<Key> / <prefix>Tile<Key>
+function tileCornerSelects(prefix){return [...editor.querySelectorAll(`select[data-corner^="${prefix}"]`)];}
+function syncTileHidden(prefix){
+  const used=new Set(tileCornerSelects(prefix).filter(s=>s.value).map(s=>s.dataset.corner.slice(prefix.length)));
+  for(const [key] of TILE_DEFS){
+    const sel=tileCornerSelects(prefix).find(s=>s.value===key);
+    if(sel){editor.elements[prefix+'Tile'+key].value=sel.dataset.corner.slice(prefix.length);continue;}
+    // Unassigned tile: fall back to its default, or any corner not taken by another tile.
+    const fallback=[TILE_DEFAULT_POS[key],...CORNERS.map(c=>c[0])].find(c=>!used.has(c));
+    if(fallback){editor.elements[prefix+'Tile'+key].value=fallback;used.add(fallback);}
+  }
+}
+function populateTileCorners(prefix){
+  for(const [key] of TILE_DEFS){
+    const value=editor.elements[prefix+'Tile'+key]?.value||TILE_DEFAULT_POS[key];
+    const sel=tileCornerSelects(prefix).find(s=>s.dataset.corner===prefix+value);
+    if(sel)sel.value=key;
+  }
+}
 for(const prefix of ['full','compact']){
   for(const [key] of TILE_DEFS){
     const hidden=document.createElement('input');
     hidden.type='hidden';hidden.name=prefix+'Show'+key;hidden.value='true';
     editor.appendChild(hidden);
+    const posHidden=document.createElement('input');
+    posHidden.type='hidden';posHidden.name=prefix+'Tile'+key;posHidden.value=TILE_DEFAULT_POS[key];
+    editor.appendChild(posHidden);
     const checkbox=editor.querySelector(`[data-tilecheck="${prefix}${key}"]`);
     checkbox.addEventListener('change',()=>hidden.value=checkbox.checked?'true':'false');
+  }
+  for(const sel of tileCornerSelects(prefix)){
+    sel.addEventListener('change',()=>{
+      if(sel.value){for(const other of tileCornerSelects(prefix))if(other!==sel&&other.value===sel.value)other.value='';}
+      syncTileHidden(prefix);
+    });
+    syncTileHidden(prefix);
   }
 }
 function markerButtonState(which){

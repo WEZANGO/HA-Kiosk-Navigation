@@ -36,6 +36,11 @@
     .metric.congestion-amber { background: rgba(180, 83, 9, .94); border-color: rgba(253, 230, 138, .82); }
     .metric.congestion-red { background: rgba(185, 28, 28, .94); border-color: rgba(254, 202, 202, .82); }
     .metric.congestion-green small, .metric.congestion-amber small, .metric.congestion-red small { color: #fff; }
+    body.corner-vignette .metric { border: 0; border-radius: 0; box-shadow: none; backdrop-filter: none; background: radial-gradient(ellipse at var(--vignette-origin), rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7) * 0.74)) var(--vignette-inner,57%), transparent var(--vignette-outer,76%)); }
+    body.corner-vignette .metric.pos-tl { --vignette-origin: top left; top: 0; left: 0; }
+    body.corner-vignette .metric.pos-tr { --vignette-origin: top right; top: 0; right: 0; }
+    body.corner-vignette .metric.pos-bl { --vignette-origin: bottom left; bottom: 0; left: 0; }
+    body.corner-vignette .metric.pos-br { --vignette-origin: bottom right; bottom: 0; right: 0; }
     #display-title { position: fixed; z-index: 6; top: 18px; left: 50%; transform: translateX(-50%); max-width: 70vw; padding: 8px 18px; border-radius: 10px; background: rgba(15,23,42,.84); color: #fff; font: 700 2rem/1.15 system-ui,sans-serif; text-align: center; text-shadow: 0 1px 3px #000; }
     #display-title[hidden] { display: none; } body.title-bottom #display-title { top: auto; bottom: 18px; } #display-title { font-size: var(--title-size, 2rem); } body.title-no-background #display-title { background: transparent; box-shadow: none; } body.title-serif #display-title { font-family: Georgia,serif; } body.title-mono #display-title { font-family: ui-monospace,SFMono-Regular,monospace; }
     body.corner-vignette #display-title { top: 0; left: 0; transform: none; width: 100%; max-width: none; min-height: 82px; padding: 13px 20%; border-radius: 0; background: linear-gradient(to bottom, rgba(15,23,42,.9), rgba(15,23,42,.55) 55%, transparent); } body.corner-vignette.title-bottom #display-title { top: auto; bottom: 0; background: linear-gradient(to top, rgba(15,23,42,.9), rgba(15,23,42,.55) 55%, transparent); }
