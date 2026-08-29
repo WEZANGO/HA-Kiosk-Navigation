@@ -1,5 +1,5 @@
 name: HERE Traffic Dashboards
-version: 0.2.5
+version: 0.2.6
 slug: here_traffic_dashboards
 description: Create shared-key HERE traffic route displays for Home Assistant dashboards.
 url: https://github.com/example/here-traffic-dashboards

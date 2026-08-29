@@ -107,7 +107,7 @@ function openModal(dashboard,variant){
     for(const[k,v]of Object.entries(dashboard))field(k,v);
     field('edit-id',dashboard.id);
     modalTitle.textContent=`Edit: ${dashboard.name}`;
-    f.dataset.variant='';
+    f.dataset.variant=dashboard.kind==='compact'?'compact':'full';
   }else{
     f.dataset.variant=variant||'';
     modalTitle.textContent=variant==='compact'?'New Card':'New Full Screen Map';
