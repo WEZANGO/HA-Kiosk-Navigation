@@ -85,7 +85,7 @@ body{max-width:940px;margin:0 auto;padding:28px;font:16px system-ui,sans-serif;b
 #editor[data-variant="compact"] [data-variant="full"]{display:none}#editor [data-variant]{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.modal-buttons{display:flex;gap:10px;grid-column:1/-1}
 .field-label{font-weight:600}.tile-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.tile-control{display:grid;gap:6px;background:#0f172a;border:1px solid #334155;border-radius:9px;padding:10px}.tile-show{display:flex;align-items:center;gap:8px;font-size:.88rem;color:#e2e8f0}.tile-show input{width:auto;margin:0;accent-color:#38bdf8}.tile-control select{margin:0}.pick-field{display:grid;gap:6px;margin:2px 0 8px}.icon-grid{display:flex;gap:6px;flex-wrap:wrap}.icon-choice{width:44px;height:44px;display:grid;place-items:center;background:#0f172a;border:1px solid #64748b;border-radius:9px;color:#cbd5e1;cursor:pointer;padding:0}.icon-choice svg{width:22px;height:22px}.icon-choice:hover{border-color:#94a3b8}.icon-choice.selected{background:#38bdf8;border-color:#38bdf8;color:#082f49}.shape-row{display:flex;gap:6px;flex-wrap:wrap}.shape-choice{background:#0f172a;border:1px solid #64748b;border-radius:7px;color:#cbd5e1;font:inherit;font-size:.86rem;padding:7px 13px;cursor:pointer}.shape-choice:hover{border-color:#94a3b8}.shape-choice.selected{background:#38bdf8;border-color:#38bdf8;color:#082f49;font-weight:600}.pick{grid-column:1/-1;margin:2px 0 6px}.pick-head{display:flex;align-items:center;gap:8px;background:#0f172a;border:1px solid #64748b;border-radius:9px;padding:11px 14px;color:#cbd5e1;font:inherit;font-size:.92rem;cursor:pointer;width:100%;text-align:left}.pick-head b{color:#f8fafc}.pick-head .chev{margin-left:auto;transition:transform .2s}.pick.open .chev{transform:rotate(180deg)}.pick-body{display:none;margin-top:10px;padding:12px;border:1px solid #334155;border-radius:10px;background:#0b1222}.pick.open .pick-body{display:block}.pick-tabs{display:flex;gap:8px;margin-bottom:10px}.pick-tabs button{background:#334155;color:#e2e8f0;font:inherit;font-size:.88rem;padding:7px 14px;border-radius:7px;cursor:pointer}.pick-tabs button[aria-selected="true"]{background:#38bdf8;color:#082f49;font-weight:700}.pick-search{display:flex;gap:8px}.pick-search input{flex:1}.pick-search button{padding:10px 16px}.pick-results{margin:10px 0 0;padding:0;list-style:none;display:grid;gap:6px;max-height:180px;overflow:auto}.pick-results button{display:block;width:100%;text-align:left;background:#0f172a;border:1px solid #334155;color:#e2e8f0;font:inherit;font-size:.88rem;padding:9px 12px;border-radius:8px;cursor:pointer}.pick-results button:hover{border-color:#38bdf8}.pick-results .sub{display:block;color:#94a3b8;font-size:.8rem}.pick-status{margin:10px 0 0;color:#94a3b8;font-size:.86rem}.pick-status.error{color:#fca5a5}.pick-map-wrap{position:relative;height:320px;border-radius:8px;overflow:hidden;border:1px solid #334155}.pick-hint{position:absolute;z-index:1000;top:10px;left:50%;transform:translateX(-50%);padding:6px 14px;border-radius:999px;background:rgba(15,23,42,.88);color:#cbd5e1;font-size:.8rem;pointer-events:none;white-space:nowrap}.pick-actions{display:flex;align-items:center;gap:10px;margin-top:10px}.pick-coords{flex:1;color:#94a3b8;font-size:.84rem;font-family:ui-monospace,monospace}.pick-actions .use{background:#38bdf8;color:#082f49;font-weight:700;padding:9px 16px;cursor:pointer;border:0;border-radius:7px;font:inherit}.pick-actions .use:disabled{opacity:.4;cursor:not-allowed}.leaflet-container{background:#0b1222;font:inherit}
 .slider-field .slider-row{display:flex;align-items:center;gap:12px}.slider-field input[type=range]{flex:1;padding:0;border:0;background:transparent;accent-color:#38bdf8;height:24px}.slider-field output{min-width:26px;text-align:center;background:#0f172a;border:1px solid #334155;border-radius:6px;padding:4px 6px;font-size:.85rem;color:#e2e8f0}
-.preview{margin-top:14px}.preview-screen{position:relative;height:150px;border-radius:10px;border:1px solid #334155;overflow:hidden;background:linear-gradient(135deg,#0c1a30 0%,#0f172a 55%,#16283f 100%)}.preview-screen::after{content:"";position:absolute;left:8%;right:8%;top:52%;height:7px;border-radius:6px;background:linear-gradient(90deg,var(--route-colour,#38bdf8) 0%,#fbbf24 55%,#ef4444 100%);box-shadow:0 0 0 3px rgba(8,15,35,.9)}.preview-title{position:absolute;top:10px;left:50%;transform:translateX(-50%);padding:3px 10px;border-radius:6px;background:rgba(15,23,42,.85);color:#fff;font-weight:700;white-space:nowrap}.preview-metric{position:absolute;right:10px;bottom:10px;padding:8px 12px;border-radius:9px;background:rgba(15,23,42,.88);border:1px solid rgba(255,255,255,.14);color:#fff;display:grid;gap:2px;text-align:center}.preview-metric small{color:#cbd5e1;font-weight:700;text-transform:uppercase;letter-spacing:.08em}.preview-metric strong{color:#fff;line-height:1}.preview-metric.vignette{border:0;border-radius:0;background:radial-gradient(ellipse at bottom right,rgba(15,23,42,.95),rgba(15,23,42,.5) 70%,transparent)}.preview-caption{display:block;margin-top:6px;color:#94a3b8;font-size:.78rem}</style><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" /><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script></head><body>
+.preview-actions{margin-top:14px;display:flex;align-items:center;gap:12px}.preview-btn{background:#38bdf8;color:#082f49;font-weight:700;padding:10px 20px;border-radius:8px;cursor:pointer;border:0;font:inherit}.preview-btn:hover{filter:brightness(1.1)}.preview-hint{color:#fca5a5;font-size:.86rem}.preview-overlay{position:fixed;inset:0;z-index:200;background:rgba(3,7,18,.88);display:grid;place-items:center;padding:24px}.preview-overlay[hidden]{display:none}.preview-frame-wrap{width:min(96vw,1400px);height:min(92vh,1000px);display:flex;flex-direction:column;background:#0f172a;border:1px solid #334155;border-radius:12px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.5)}.preview-frame-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#1e293b;border-bottom:1px solid #334155;color:#e2e8f0}.preview-close{background:#334155;color:#e2e8f0;border:0;border-radius:7px;padding:7px 14px;font:inherit;cursor:pointer}.preview-close:hover{background:#475569}.preview-frame{flex:1;border:0;width:100%;background:#0b1222}</style><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" /><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script></head><body>
 <h1>HERE Traffic Dashboards</h1><p>Set the shared HERE API key in this app's <strong>Configuration</strong> tab. Create named displays below; no device needs to enter the key.</p>
 <section><h2>Dashboards</h2><div class="new-buttons"><button id="new-full" class="wide-button">＋ Add Full Screen Map</button><button id="new-compact" class="wide-button">＋ Add Card</button></div></section>
 <section><h2>Your dashboard displays</h2><p>Use <em>Full screen</em> for a wall/tablet display and <em>Compact</em> for a dashboard iframe card. Ingress URLs work within Home Assistant; direct URLs require this app's port to be reachable on your LAN.</p><div id="list">Loading…</div></section>
@@ -217,13 +217,13 @@ const ICONS={
 };
 const sizeMap={small:3,medium:5,large:7};
 const TILE_DEFS=[['Duration','Trip time'],['Normal','Normal time'],['Delay','Traffic delay'],['Distance','Distance']];
-const previewBox=(prefix)=>`<div class="preview wide" data-preview="${prefix}"><div class="preview-screen"><div class="preview-title"></div><div class="preview-metric"><small>DELAY</small><strong>+4 min</strong></div></div><span class="preview-caption">Live preview</span></div>`;
+const previewButton=(prefix,heading)=>`<div class="preview-actions wide"><button type="button" class="preview-btn" data-previewbtn="${prefix}">▶ ${heading} preview</button><span class="preview-hint" data-previewhint="${prefix}" hidden></span></div>`;
 // Defaults: top left = normal time, top right = distance, bottom left = trip time, bottom right = traffic delay.
 const TILE_DEFAULT_POS={Duration:'bl',Normal:'tl',Delay:'br',Distance:'tr'};
 const CORNERS=[['tl','Top left'],['tr','Top right'],['bl','Bottom left'],['br','Bottom right']];
 for(const [prefix,heading] of [['full','Full-screen presentation'],['compact','Compact presentation']]){
   const anchor=[...editor.querySelectorAll('h3')].find(node=>node.textContent.startsWith(prefix==='full'?'Full':'Compact'));
-  anchor.insertAdjacentHTML('afterend', `<h4 class="wide">${heading}</h4>${input(prefix+'Title','Optional title','e.g. Morning commute')}${select(prefix+'TitlePosition','Title position',options.position,'top')}${slider(prefix+'TitleSize','Title size',1,10,1,'medium',sizeMap)}${select(prefix+'TitleBackground','Title background',options.background,'rounded')}${select(prefix+'TitleFont','Title font',options.font,'system')}${slider(prefix+'MetricSize','Card size',1,10,1,'large',sizeMap)}${select(prefix+'MetricStyle','Card style',options.cardStyle,'rounded')}${select(prefix+'VignettePosition','Vignette position',options.vignettePosition,'all')}${slider(prefix+'VignetteOpacity','Vignette opacity',1,10,1,'5',null)}${slider(prefix+'VignetteSize','Vignette size',1,10,1,'5',null)}${tileControls(prefix)}${previewBox(prefix)}`);
+  anchor.insertAdjacentHTML('afterend', `<h4 class="wide">${heading}</h4>${input(prefix+'Title','Optional title','e.g. Morning commute')}${select(prefix+'TitlePosition','Title position',options.position,'top')}${slider(prefix+'TitleSize','Title size',1,10,1,'medium',sizeMap)}${select(prefix+'TitleBackground','Title background',options.background,'rounded')}${select(prefix+'TitleFont','Title font',options.font,'system')}${slider(prefix+'MetricSize','Card size',1,10,1,'large',sizeMap)}${select(prefix+'MetricStyle','Card style',options.cardStyle,'rounded')}${select(prefix+'VignettePosition','Vignette position',options.vignettePosition,'all')}${slider(prefix+'VignetteOpacity','Vignette opacity',1,10,1,'5',null)}${slider(prefix+'VignetteSize','Vignette size',1,10,1,'5',null)}${tileControls(prefix)}${previewButton(prefix,prefix==='full'?'Full screen':'Compact card')}`);
 }
 // Per-corner tile pickers: checkbox enables the corner, select chooses its tile.
 function tileControls(prefix){
@@ -311,25 +311,43 @@ for(const sliderEl of editor.querySelectorAll('input[type=range]')){
   const out=sliderEl.closest('.slider-row').querySelector('output');
   sliderEl.addEventListener('input',()=>out.textContent=sliderEl.value);
 }
-// Live preview updates
-const routeSchemes={ocean:'#38bdf8',emerald:'#34d399',sunset:'#fb923c',violet:'#a78bfa',contrast:'#fde047'};
-function updatePreview(prefix){
-  const box=editor.querySelector(`[data-preview="${prefix}"]`);if(!box)return;
-  const v=n=>f.elements[prefix+n]?.value;
-  const title=box.querySelector('.preview-title'),metric=box.querySelector('.preview-metric');
-  const ts=v('TitleSize'),ms=v('MetricSize');
-  title.textContent=v('Title')||'Route to office';
-  title.style.fontSize=(Number(ts)*0.28)+'px';title.style.display=v('TitlePosition')==='bottom'?'none':'block';
-  metric.style.width=(60+Number(ms)*14)+'px';
-  metric.querySelector('small').style.fontSize=(4+Number(ms)*0.45)+'px';
-  metric.querySelector('strong').style.fontSize=(9+Number(ms)*1.6)+'px';
-  metric.classList.toggle('vignette',v('MetricStyle')==='vignette');
-  const scheme=routeSchemes[v('Scheme')]||'#38bdf8';
-  box.querySelector('.preview-screen').style.setProperty('--route-colour',scheme);
-}
+// Full live preview: render the real display page (map, route, tiles) from the current form values
+// in a large overlay. POSTs the unsaved form to /api/preview and shows the result in an iframe.
+const previewBase=location.pathname.replace(/\/$/,'');
+const overlay=document.createElement('div');
+overlay.className='preview-overlay';
+overlay.hidden=true;
+overlay.innerHTML=`<div class="preview-frame-wrap"><div class="preview-frame-bar"><strong data-previewtitle></strong><button type="button" class="preview-close">✕ Close</button></div><iframe class="preview-frame" title="Dashboard preview"></iframe></div>`;
+document.body.append(overlay);
+const previewFrame=overlay.querySelector('.preview-frame');
+const openPreview=async prefix=>{
+  const hint=editor.querySelector(`[data-previewhint="${prefix}"]`);
+  const variant=prefix==='full'?'full':'compact';
+  const data=Object.fromEntries(new FormData(f));
+  data.previewVariant=variant;
+  if(!data.name)data.name=variant==='compact'?'Preview card':'Preview full screen';
+  if(!f.elements['origin'].value.trim()||!f.elements['destination'].value.trim()){
+    hint.textContent='Set an origin and destination first.';hint.hidden=false;return;
+  }
+  hint.hidden=true;
+  overlay.querySelector('[data-previewtitle]').textContent='Preview — current (unsaved) settings';
+  overlay.hidden=false;
+  previewFrame.srcdoc='<p style="font:16px system-ui;color:#94a3b8;padding:20px">Loading preview…</p>';
+  try{
+    const r=await fetch(previewBase+'/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    const payload=await r.json();
+    if(!r.ok)throw Error(payload.error||'Preview failed');
+    previewFrame.srcdoc=payload.html;
+  }catch(err){
+    overlay.hidden=true;
+    hint.textContent=err.message;hint.hidden=false;
+  }
+};
+overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.hidden=true});
+overlay.querySelector('.preview-close').onclick=()=>overlay.hidden=true;
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!overlay.hidden)overlay.hidden=true});
 for(const prefix of ['full','compact']){
-  updatePreview(prefix);
-  for(const el of f.elements)if(el.name&&el.name.startsWith(prefix))el.addEventListener('input',()=>updatePreview(prefix));
+  editor.querySelector(`[data-previewbtn="${prefix}"]`).onclick=()=>openPreview(prefix);
 }
 </script>"""
 
@@ -354,21 +372,36 @@ class Handler(BaseHTTPRequestHandler):
             if dashboard["id"] == identifier: return dashboards, index
         raise KeyError("Dashboard not found.")
 
+    def build_config(self, dashboard: dict, variant: str, compact: bool) -> dict:
+        config = {**DEFAULTS, **dashboard, "apiKey": api_key()}
+        for key, default in DEFAULTS.items():
+            field = variant + key[0].upper() + key[1:]
+            config[key] = dashboard.get(field, dashboard.get(key, default))
+        if not config["apiKey"]: raise ValueError("Set the HERE API key in this app's Configuration tab first.")
+        return config
+
+    def render_display(self, config: dict, compact: bool) -> str:
+        injected = json.dumps(config).replace("<", "\\u003c")
+        flags = f"<script>window.HERE_TRAFFIC_CONFIG={injected};window.HERE_TRAFFIC_COMPACT={str(compact).lower()};</script>"
+        return DISPLAY_FILE.read_text().replace("</head>", flags + "</head>", 1)
+
     def display(self, identifier: str, compact: bool) -> None:
         try:
             dashboards, index = self.find(identifier)
-            dashboard = dashboards[index]
             variant = "compact" if compact else "full"
-            config = {**DEFAULTS, **dashboard, "apiKey": api_key()}
-            for key, default in DEFAULTS.items():
-                field = variant + key[0].upper() + key[1:]
-                config[key] = dashboard.get(field, dashboard.get(key, default))
-            if not config["apiKey"]: raise ValueError("Set the HERE API key in this app's Configuration tab first.")
-            injected = json.dumps(config).replace("<", "\\u003c")
-            flags = f"<script>window.HERE_TRAFFIC_CONFIG={injected};window.HERE_TRAFFIC_COMPACT={str(compact).lower()};</script>"
-            self.send_html(DISPLAY_FILE.read_text().replace("</head>", flags + "</head>", 1))
+            self.send_html(self.render_display(self.build_config(dashboards[index], variant, compact), compact))
         except (KeyError, ValueError) as error:
             self.send_html(f"<h1>HERE Traffic Dashboard</h1><p>{error}</p>", 404)
+
+    def preview(self) -> None:
+        try:
+            payload = self.payload()
+            variant = "compact" if payload.get("previewVariant") == "compact" else "full"
+            compact = variant == "compact"
+            pseudo = clean_dashboard({**payload, "kind": variant})
+            self.send_json({"html": self.render_display(self.build_config(pseudo, variant, compact), compact)})
+        except (ValueError, json.JSONDecodeError) as error:
+            self.send_json({"error": str(error)}, 400)
 
     def geocode(self) -> None:
         query = parse_qs(urlparse(self.path).query).get("q", [""])[0].strip()
@@ -395,6 +428,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json({"error": "Not found"}, 404)
 
     def do_POST(self) -> None:
+        if urlparse(self.path).path.rstrip("/") == "/api/preview": return self.preview()
         if urlparse(self.path).path.rstrip("/") != "/api/dashboards": return self.send_json({"error": "Not found"}, 404)
         try:
             dashboards = load_dashboards(); item = clean_dashboard(self.payload())
