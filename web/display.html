@@ -212,16 +212,34 @@
         $('amber-threshold').value = config.amberThreshold;
         settings.hidden = false;
       }
-      function initMap(apiKey, theme) {
+      // Probe one raster tile with the key; resolves true if the Raster Tile
+      // API is authorized on this plan. Plans differ on which of raster vs
+      // vector tile services is enabled — a silent mismatch shows as a blank
+      // map with the route overlay and metric cards still visible.
+      function rasterProbeOk(apiKey) {
+        return new Promise(resolve => {
+          const img = new Image();
+          const done = ok => { img.onload = img.onerror = null; resolve(ok); };
+          img.onload = () => done(true);
+          img.onerror = () => done(false);
+          img.src = `https://1.base.maps.ls.hereapi.com/maptile/2.1/maptile/newest/normal.day/13/4200/2702/256/png?apiKey=${encodeURIComponent(apiKey)}`;
+          setTimeout(() => done(false), 6000);
+        });
+      }
+      async function initMap(apiKey, theme) {
         platform = new H.service.Platform({ apikey: apiKey });
         const layers = platform.createDefaultLayers();
         const vectorNormal = layers.vector && layers.vector.normal;
-        // Raster day/night tiles (Raster Tile API) instead of 3.2's vector
-        // HARP layers: raster works on plans without the Vector Tile service,
-        // which is what made other devices fail with 401 Unauthorized.
         const rasterNormal = layers.raster && layers.raster.normal;
-        const lightLayer = rasterNormal?.map || vectorNormal?.map;
-        const darkLayer = rasterNormal?.mapnight || lightLayer;
+        // Pick the base engine by probing raster first (cheaper tiles); if the
+        // probe fails (plan without Raster Tile API — shows as a blank map),
+        // use vector tiles instead. Vector layer creation is non-async, so a
+        // failed probe simply swaps the layer before the map renders.
+        let useRaster = rasterNormal?.map ? await rasterProbeOk(apiKey) : false;
+        const rasterLight = rasterNormal?.map, rasterDark = rasterNormal?.mapnight;
+        const vectorLight = vectorNormal?.map, vectorDark = vectorNormal?.mapnight || vectorLight;
+        const lightLayer = useRaster ? rasterLight : (vectorLight || rasterLight);
+        const darkLayer = useRaster ? (rasterDark || rasterLight) : (vectorDark || rasterDark || rasterLight);
         const baseLayer = theme === 'dark' ? darkLayer : lightLayer;
         if (!baseLayer) throw new Error('HERE could not create a base map layer for this API key.');
         map = new H.Map($('map'), baseLayer, { pixelRatio: window.devicePixelRatio || 1 });
@@ -417,7 +435,7 @@
           applyPresentation(config);
           settings.hidden = true;
           if (map) { map.dispose(); map = null; }
-          initMap(config.apiKey, resolveTheme(config.theme));
+          await initMap(config.apiKey, resolveTheme(config.theme));
           await loadRoute(config);
           lastRouteConfig = config;
           scheduleRefresh(config);
