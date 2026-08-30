@@ -336,7 +336,10 @@ for(const prefix of ['full','compact']){
       syncTileHidden(prefix);
     });
   }
-  syncTileHidden(prefix);
+  // No syncTileHidden() here: at load the corner selects are still unassigned,
+  // so a sync would mark every tile unseen ('false'), and a newly opened modal
+  // would then show all corner checkboxes unchecked. populateTileCorners() —
+  // which runs after the selects are filled — performs the first sync instead.
 }
 function markerButtonState(which){
   const hidden=n=>editor.elements[which+n];

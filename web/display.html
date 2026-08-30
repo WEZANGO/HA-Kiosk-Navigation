@@ -23,22 +23,32 @@
     .metric[hidden] { display: none; }
     .metric small { color: #cbd5e1; font-size: var(--metric-label,.98rem); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
     .metric strong { font-size: var(--metric-value,clamp(2.15rem, 4vw, 3.2rem)); line-height: 1.08; margin-top: 6px; }
-    #vignette-overlay { position: fixed; inset: 0; z-index: 6; pointer-events: none; }
+    #vignette-overlay { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
     #vignette-overlay::before, #vignette-overlay::after, #vignette-overlay .vig-left, #vignette-overlay .vig-right { content: ""; position: absolute; }
-    #vignette-overlay[data-vig="tl"]::before { inset: 0 50% 50% 0; background: radial-gradient(ellipse 100% 100% at 0 0, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vignette-inner,57%), transparent var(--vignette-outer,76%)); }
-    #vignette-overlay[data-vig="tr"]::before { inset: 0 0 50% 50%; background: radial-gradient(ellipse 100% 100% at 100% 0, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vignette-inner,57%), transparent var(--vignette-outer,76%)); }
-    #vignette-overlay[data-vig="bl"]::before { inset: 50% 50% 0 0; background: radial-gradient(ellipse 100% 100% at 0 100%, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vignette-inner,57%), transparent var(--vignette-outer,76%)); }
-    #vignette-overlay[data-vig="br"]::before { inset: 50% 0 0 50%; background: radial-gradient(ellipse 100% 100% at 100% 100%, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vignette-inner,57%), transparent var(--vignette-outer,76%)); }
-    #vignette-overlay[data-vig="top"]::before { inset: 0 0 auto 0; height: 55%; background: radial-gradient(ellipse 120% 100% at 50% 0, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vignette-inner,57%), transparent var(--vignette-outer,76%)); }
-    #vignette-overlay[data-vig="bottom"]::before { inset: auto 0 0 0; height: 55%; background: radial-gradient(ellipse 120% 100% at 50% 100%, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vignette-inner,57%), transparent var(--vignette-outer,76%)); }
-    #vignette-overlay[data-vig="left"]::before { inset: 0 auto 0 0; width: 55%; background: radial-gradient(ellipse 100% 120% at 0 50%, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vignette-inner,57%), transparent var(--vignette-outer,76%)); }
-    #vignette-overlay[data-vig="right"]::before { inset: 0 0 0 auto; width: 55%; background: radial-gradient(ellipse 100% 120% at 100% 50%, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vignette-inner,57%), transparent var(--vignette-outer,76%)); }
-    #vignette-overlay[data-vig="all"]::before { inset: 0; background: radial-gradient(ellipse 130% 130% at 50% 50%, transparent var(--vignette-inner,57%), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) calc(var(--vignette-inner,57%) + 12%), rgba(15,23,42,var(--vignette-alpha,.7)) var(--vignette-outer,76%)); }
+    #vignette-overlay[data-vig="tl"]::before { inset: 0 50% 50% 0; background: radial-gradient(ellipse 100% 100% at 0 0, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vig-inner,57%), transparent var(--vig-outer,76%)); }
+    #vignette-overlay[data-vig="tr"]::before { inset: 0 0 50% 50%; background: radial-gradient(ellipse 100% 100% at 100% 0, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vig-inner,57%), transparent var(--vig-outer,76%)); }
+    #vignette-overlay[data-vig="bl"]::before { inset: 50% 50% 0 0; background: radial-gradient(ellipse 100% 100% at 0 100%, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vig-inner,57%), transparent var(--vig-outer,76%)); }
+    #vignette-overlay[data-vig="br"]::before { inset: 50% 0 0 50%; background: radial-gradient(ellipse 100% 100% at 100% 100%, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vig-inner,57%), transparent var(--vig-outer,76%)); }
+    /* Edge vignettes span the whole viewport (inset: 0) so the fade never hits a
+       hard box edge; 100% of the gradient ray = the opposite screen edge. */
+    #vignette-overlay[data-vig="top"]::before { inset: 0; background: radial-gradient(ellipse 100% 100% at 50% 0, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vig-inner,57%), transparent var(--vig-outer,76%)); }
+    #vignette-overlay[data-vig="bottom"]::before { inset: 0; background: radial-gradient(ellipse 100% 100% at 50% 100%, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vig-inner,57%), transparent var(--vig-outer,76%)); }
+    #vignette-overlay[data-vig="left"]::before { inset: 0; background: radial-gradient(ellipse 100% 100% at 0 50%, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vig-inner,57%), transparent var(--vig-outer,76%)); }
+    #vignette-overlay[data-vig="right"]::before { inset: 0; background: radial-gradient(ellipse 100% 100% at 100% 50%, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vig-inner,57%), transparent var(--vig-outer,76%)); }
+    /* All-around: rim measured from the centre with farthest-corner sizing, so
+       100% lands exactly on the screen corners — the fade is always visible and
+       grows inward with the size slider (inner/outer set per position in JS). */
+    #vignette-overlay[data-vig="all"]::before { inset: 0; background: radial-gradient(ellipse farthest-corner at 50% 50%, transparent var(--vig-inner,57%), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) calc(var(--vig-inner,57%) + 11%), rgba(15,23,42,var(--vignette-alpha,.7)) var(--vig-outer,92%)); }
     .metric.congestion-green { background: rgba(21, 128, 61, .92); border-color: rgba(134, 239, 172, .75); }
     .metric.congestion-amber { background: rgba(180, 83, 9, .94); border-color: rgba(253, 230, 138, .82); }
     .metric.congestion-red { background: rgba(185, 28, 28, .94); border-color: rgba(254, 202, 202, .82); }
     .metric.congestion-green small, .metric.congestion-amber small, .metric.congestion-red small { color: #fff; }
-    body.corner-vignette .metric { border: 0; border-radius: 0; box-shadow: none; backdrop-filter: none; background: radial-gradient(ellipse at var(--vignette-origin), rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7) * 0.74)) var(--vignette-inner,57%), transparent var(--vignette-outer,76%)); }
+    /* Vignette-style tiles: flat translucent backdrop (no border/rounding). The
+       fading toward the map corner is the overlay's job — a gradient here would
+       turn the tile see-through, so its brightness would vary with whatever is
+       behind it (dark vignette at top, bright map at bottom) and the label
+       would stop reading as white. */
+    body.corner-vignette .metric { border: 0; border-radius: 0; box-shadow: none; backdrop-filter: none; background: rgba(15, 23, 42, calc(var(--vignette-alpha, .7) * 0.9)); }
     body.corner-vignette .metric.pos-tl { --vignette-origin: top left; top: 0; left: 0; }
     body.corner-vignette .metric.pos-tr { --vignette-origin: top right; top: 0; right: 0; }
     body.corner-vignette .metric.pos-bl { --vignette-origin: bottom left; bottom: 0; left: 0; }
@@ -512,6 +522,15 @@
           body.style.setProperty('--vignette-alpha', (0.45 + o * 0.5).toFixed(2));
           body.style.setProperty('--vignette-inner', (34 + s * 4.6).toFixed(0) + '%');
           body.style.setProperty('--vignette-outer', (58 + s * 3.6).toFixed(0) + '%');
+          // Overlay gradients measure from the screen centre/edge, so the rim
+          // must land ON the visible corner/edge: at size 10 the inner fade
+          // starts near the centre; at size 1 only the outermost sliver tints.
+          // Corner/edge positions measure from that position, 'all' measures
+          // from the centre with farthest-corner (100% = the corner).
+          const inner = Math.max(0, 100 - s * 9);   // s=1 -> 91%, s=5 -> 55%, s=10 -> 10%
+          const outer = Math.min(100, inner + 22);  // dark rim, always fully on screen
+          body.style.setProperty('--vig-inner', inner.toFixed(0) + '%');
+          body.style.setProperty('--vig-outer', outer.toFixed(0) + '%');
         }
         // Vignette overlay: separate layer behind the tiles, positionable.
         const vignette = $('vignette-overlay');
