@@ -4,13 +4,14 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>HERE Traffic Route</title>
-  <!-- HERE Maps JavaScript API v3.1: raster layers avoid the 3.2/HARP Vector
-       Tile service, which 401s on HERE plans without that service enabled. -->
-  <script src="https://js.api.here.com/v3/3.1/mapsjs-core.js"></script>
-  <script src="https://js.api.here.com/v3/3.1/mapsjs-service.js"></script>
-  <script src="https://js.api.here.com/v3/3.1/mapsjs-ui.js"></script>
-  <script src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js"></script>
-  <link rel="stylesheet" href="https://js.api.here.com/v3/3.1/mapsjs-ui.css" />
+  <!-- HERE Maps JavaScript API v3.2: its default layers use the CURRENT Raster
+       Tile API v3 (maps.hereapi.com). The legacy maptile/2.1 service used by
+       v3.1 returns 410 Gone since HERE retired it — that was the blank map. -->
+  <script src="https://js.api.here.com/v3/3.2/mapsjs-core.js"></script>
+  <script src="https://js.api.here.com/v3/3.2/mapsjs-service.js"></script>
+  <script src="https://js.api.here.com/v3/3.2/mapsjs-ui.js"></script>
+  <script src="https://js.api.here.com/v3/3.2/mapsjs-mapevents.js"></script>
+  <link rel="stylesheet" href="https://js.api.here.com/v3/3.2/mapsjs-ui.css" />
   <style>
     :root { color-scheme: dark; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     * { box-sizing: border-box; }
@@ -211,7 +212,8 @@
           const done = ok => { img.onload = img.onerror = null; resolve(`RasterTile: ${ok ? 'HTTP 200 (authorized)' : 'FAILED/blocked'}`); };
           img.onload = () => done(true);
           img.onerror = () => done(false);
-          img.src = `https://1.base.maps.ls.hereapi.com/maptile/2.1/maptile/newest/normal.day/13/4200/2702/256/png?apiKey=${encodeURIComponent(apiKey)}`;
+          // Current Raster Tile API v3 endpoint (the legacy maptile/2.1 hosts return 410).
+          img.src = `https://maps.hereapi.com/v3/base/mc/13/4200/2702/png?style=lite.day&apiKey=${encodeURIComponent(apiKey)}`;
           setTimeout(() => done(false), 8000);
         });
         const results = await Promise.all([
@@ -240,27 +242,19 @@
         $('amber-threshold').value = config.amberThreshold;
         settings.hidden = false;
       }
-      // Raster Tile API is the only tile engine authorized on the typical
-      // freemium plan; vector tiles 401 there (the original blank-map bug).
-      // Always use raster. The day/night scheme is chosen explicitly instead
-      // of relying on layers.raster.normal.mapnight, which is missing in some
-      // HERE JS builds and silently fell back to the day layer (map rendered
-      // light while dark theme was selected).
+      // Raster Tile API only: vector tiles 401 on plans without the Vector
+      // Tile service (the original 401). v3.2's raster layers hit the CURRENT
+      // Raster Tile API v3 (maps.hereapi.com) — the legacy maptile/2.1 tiles
+      // used by the v3.1 library return 410 Gone (the recent blank map).
       function initMap(apiKey, theme) {
         platform = new H.service.Platform({ apikey: apiKey });
-        const layers = platform.createDefaultLayers();
+        const layers = platform.createDefaultLayers({ type: 'raster' });
+        // v3.2 createDefaultLayers returns vector layers by default; request
+        // RASTER tiles explicitly — vector tiles 401 on plans without the
+        // Vector Tile service (the original 401). raster.normal.map/mapnight
+        // exist in v3.2 and hit maps.hereapi.com (Raster Tile API v3).
         const rasterNormal = layers.raster && layers.raster.normal;
-        // The JS API raster group has day (normal.map) and night (normal.mapnight)
-        // variants; if mapnight is missing in this build, build the night layer
-        // explicitly from the raster tile service with the night map id.
-        let lightLayer = rasterNormal?.map, darkLayer = rasterNormal?.mapnight;
-        if (!darkLayer && lightLayer) {
-          try {
-            const svc = platform.getMapTileService({ type: 'base' });
-            darkLayer = new H.map.layer.TileLayer(svc.createTileLayer('maptile', 'mapnight', 'newest', 'normal.day', { tileSize: 256 }));
-          } catch (err) { console.error('Night raster layer unavailable', err); }
-        }
-        const baseLayer = theme === 'dark' ? (darkLayer || lightLayer) : (lightLayer || darkLayer);
+        const baseLayer = theme === 'dark' ? (rasterNormal?.mapnight || rasterNormal?.map) : rasterNormal?.map;
         if (!baseLayer) throw new Error('HERE could not create a base map layer for this API key.');
         map = new H.Map($('map'), baseLayer, { pixelRatio: window.devicePixelRatio || 1 });
         // Surface tile/loading failures in the card instead of leaving a blank map.
@@ -274,7 +268,10 @@
         }
         // Layer names vary by HERE rendering engine/version. Never add an
         // undefined layer: that produces H.map.DataModel#add Argument #0 Undefined.
-        const trafficLayer = rasterNormal?.traffic || layers.raster?.traffic?.map;
+        // v3.2 raster groups: traffic flow lives on raster.normal.traffic (may
+        // be absent in some builds) — v3.2 also offers vector.traffic.map but
+        // that needs the Vector Tile service; skip if neither exists.
+        const trafficLayer = layers.raster?.normal?.traffic;
         if (trafficLayer) map.addLayer(trafficLayer); // live flow/incident overlay
         new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
         ui = H.ui.UI.createDefault(map, layers);
