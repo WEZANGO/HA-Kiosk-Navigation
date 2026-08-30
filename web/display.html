@@ -212,35 +212,27 @@
         $('amber-threshold').value = config.amberThreshold;
         settings.hidden = false;
       }
-      // Probe one raster tile with the key; resolves true if the Raster Tile
-      // API is authorized on this plan. Plans differ on which of raster vs
-      // vector tile services is enabled — a silent mismatch shows as a blank
-      // map with the route overlay and metric cards still visible.
-      function rasterProbeOk(apiKey) {
-        return new Promise(resolve => {
-          const img = new Image();
-          const done = ok => { img.onload = img.onerror = null; resolve(ok); };
-          img.onload = () => done(true);
-          img.onerror = () => done(false);
-          img.src = `https://1.base.maps.ls.hereapi.com/maptile/2.1/maptile/newest/normal.day/13/4200/2702/256/png?apiKey=${encodeURIComponent(apiKey)}`;
-          setTimeout(() => done(false), 6000);
-        });
-      }
-      async function initMap(apiKey, theme) {
+      // Raster Tile API is the only tile engine authorized on the typical
+      // freemium plan; vector tiles 401 there (the original blank-map bug).
+      // Always use raster. The day/night scheme is chosen explicitly instead
+      // of relying on layers.raster.normal.mapnight, which is missing in some
+      // HERE JS builds and silently fell back to the day layer (map rendered
+      // light while dark theme was selected).
+      function initMap(apiKey, theme) {
         platform = new H.service.Platform({ apikey: apiKey });
         const layers = platform.createDefaultLayers();
-        const vectorNormal = layers.vector && layers.vector.normal;
         const rasterNormal = layers.raster && layers.raster.normal;
-        // Pick the base engine by probing raster first (cheaper tiles); if the
-        // probe fails (plan without Raster Tile API — shows as a blank map),
-        // use vector tiles instead. Vector layer creation is non-async, so a
-        // failed probe simply swaps the layer before the map renders.
-        let useRaster = rasterNormal?.map ? await rasterProbeOk(apiKey) : false;
-        const rasterLight = rasterNormal?.map, rasterDark = rasterNormal?.mapnight;
-        const vectorLight = vectorNormal?.map, vectorDark = vectorNormal?.mapnight || vectorLight;
-        const lightLayer = useRaster ? rasterLight : (vectorLight || rasterLight);
-        const darkLayer = useRaster ? (rasterDark || rasterLight) : (vectorDark || rasterDark || rasterLight);
-        const baseLayer = theme === 'dark' ? darkLayer : lightLayer;
+        // The JS API raster group has day (normal.map) and night (normal.mapnight)
+        // variants; if mapnight is missing in this build, build the night layer
+        // explicitly from the raster tile service with the night map id.
+        let lightLayer = rasterNormal?.map, darkLayer = rasterNormal?.mapnight;
+        if (!darkLayer && lightLayer) {
+          try {
+            const svc = platform.getMapTileService({ type: 'base' });
+            darkLayer = new H.map.layer.TileLayer(svc.createTileLayer('maptile', 'mapnight', 'newest', 'normal.day', { tileSize: 256 }));
+          } catch (err) { console.error('Night raster layer unavailable', err); }
+        }
+        const baseLayer = theme === 'dark' ? (darkLayer || lightLayer) : (lightLayer || darkLayer);
         if (!baseLayer) throw new Error('HERE could not create a base map layer for this API key.');
         map = new H.Map($('map'), baseLayer, { pixelRatio: window.devicePixelRatio || 1 });
         // Surface tile/loading failures in the card instead of leaving a blank map.
@@ -254,7 +246,7 @@
         }
         // Layer names vary by HERE rendering engine/version. Never add an
         // undefined layer: that produces H.map.DataModel#add Argument #0 Undefined.
-        const trafficLayer = rasterNormal?.traffic || vectorNormal?.traffic || layers.vector?.traffic?.map;
+        const trafficLayer = rasterNormal?.traffic || layers.raster?.traffic?.map;
         if (trafficLayer) map.addLayer(trafficLayer); // live flow/incident overlay
         new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
         ui = H.ui.UI.createDefault(map, layers);
