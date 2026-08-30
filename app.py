@@ -125,9 +125,12 @@ body{max-width:940px;margin:0 auto;padding:28px;font:16px system-ui,sans-serif;b
 // "display/<id>" resolves against the ingress base automatically per session.
 const displayLink=p=>`${base}/${p.replace(/^\//,'')}`;
 // Direct (non-ingress) link with the shared access token, for kiosks and
-// devices that don't have a Home Assistant session.
+// devices that don't have a Home Assistant session. Must point at the add-on's
+// own port (8099) — building it from location.origin while viewing through
+// ingress would wrap the ingress path again and 401.
+const DIRECT_PORT='8099';
 const ACCESS_TOKEN='__ACCESS_TOKEN__';
-const directLink=p=>ACCESS_TOKEN?`${location.origin}${base}${p}?auth=${encodeURIComponent(ACCESS_TOKEN)}`:'';function field(name,value){const input=f.elements[name];if(input)input.value=value??''}function resetForm(){f.reset();field('edit-id','');modalTitle.textContent='New dashboard';for(const[w,k]of[['origin','Icon'],['origin','Shape'],['destination','Icon'],['destination','Shape']]){const el=f.elements[w+k];if(el)el.value=''}for(const which of['origin','destination'])if(typeof markerButtonState==='function')markerButtonState(which)}// Group each h3 section (and everything after it) into a data-variant wrapper
+const directLink=p=>ACCESS_TOKEN?`${location.protocol}//${location.hostname}:${DIRECT_PORT}${p}?auth=${encodeURIComponent(ACCESS_TOKEN)}`:'';function field(name,value){const input=f.elements[name];if(input)input.value=value??''}function resetForm(){f.reset();field('edit-id','');modalTitle.textContent='New dashboard';for(const[w,k]of[['origin','Icon'],['origin','Shape'],['destination','Icon'],['destination','Shape']]){const el=f.elements[w+k];if(el)el.value=''}for(const which of['origin','destination'])if(typeof markerButtonState==='function')markerButtonState(which)}// Group each h3 section (and everything after it) into a data-variant wrapper
 // so a single variant can be shown/hidden when creating a new dashboard.
 function groupVariants(){
   const kids=[...f.children];let wrapper=null,variant='';
