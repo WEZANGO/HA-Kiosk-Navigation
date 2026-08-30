@@ -194,6 +194,34 @@
       function formatDistance(meters) {
         return meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${Math.round(meters)} m`;
       }
+      // ?diag=1 — probe HERE tile services with the configured key and report
+      // the raw HTTP status of each, to distinguish plan-permission problems
+      // (map blank) from ingress/session problems (page itself 401s).
+      async function runDiagnostics(apiKey) {
+        const probe = async (name, url) => {
+          try {
+            const r = await fetch(url);
+            return `${name}: HTTP ${r.status}`;
+          } catch (e) { return `${name}: FAILED (${e.message})`; }
+        };
+        // Raster tile host doesn't send CORS headers, so a fetch would always
+        // fail — probe it with an <img> load (onload = authorized) instead.
+        const rasterProbe = () => new Promise(resolve => {
+          const img = new Image();
+          const done = ok => { img.onload = img.onerror = null; resolve(`RasterTile: ${ok ? 'HTTP 200 (authorized)' : 'FAILED/blocked'}`); };
+          img.onload = () => done(true);
+          img.onerror = () => done(false);
+          img.src = `https://1.base.maps.ls.hereapi.com/maptile/2.1/maptile/newest/normal.day/13/4200/2702/256/png?apiKey=${encodeURIComponent(apiKey)}`;
+          setTimeout(() => done(false), 8000);
+        });
+        const results = await Promise.all([
+          rasterProbe(),
+          probe('VectorTile', `https://vector.hereapi.com/v2/base/mc/13/4200/2702/omv?apiKey=${encodeURIComponent(apiKey)}`),
+          probe('Routing', 'https://router.hereapi.com/v8/routes?transportMode=car&origin=52.5,13.4&destination=52.4,13.3&apiKey=' + encodeURIComponent(apiKey)),
+          probe('Geocode', 'https://geocode.search.hereapi.com/v1/geocode?q=berlin&apiKey=' + encodeURIComponent(apiKey)),
+        ]);
+        setStatus('Diagnostics — ' + results.join(' | '));
+      }
       function setStatus(message, error = false) {
         status.textContent = message;
         status.classList.toggle('error', error);
@@ -426,6 +454,7 @@
         try {
           applyPresentation(config);
           settings.hidden = true;
+          if (params.get('diag')) { runDiagnostics(config.apiKey); return; }
           if (map) { map.dispose(); map = null; }
           await initMap(config.apiKey, resolveTheme(config.theme));
           await loadRoute(config);

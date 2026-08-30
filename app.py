@@ -8,6 +8,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlencode, urlparse
 from urllib.request import urlopen
+import secrets
 
 DATA_FILE = Path("/data/dashboards.json")
 OPTIONS_FILE = Path("/data/options.json")
@@ -45,6 +46,33 @@ def api_key() -> str:
         return str(json.loads(OPTIONS_FILE.read_text()).get("here_api_key", "")).strip()
     except (FileNotFoundError, json.JSONDecodeError):
         return ""
+
+
+def access_token() -> str:
+    """Shared access token for direct (non-ingress) connections.
+
+    HA ingress already authenticates users before requests reach this app, so
+    ingress traffic needs no token. Direct connections (port 8099 — kiosks,
+    dashboard iframes, shared links) are authenticated with this token, stored
+    in /data/options.json as access_token. A stable random default is created
+    on first read so it works out of the box.
+    """
+    try:
+        options = json.loads(OPTIONS_FILE.read_text())
+    except (FileNotFoundError, json.JSONDecodeError):
+        options = {}
+    token = str(options.get("access_token", "")).strip()
+    if not token:
+        token = secrets.token_urlsafe(24)
+        options["access_token"] = token
+        try:
+            OPTIONS_FILE.parent.mkdir(parents=True, exist_ok=True)
+            temporary = OPTIONS_FILE.with_suffix(".tmp")
+            temporary.write_text(json.dumps(options, indent=2) + "\n")
+            temporary.replace(OPTIONS_FILE)
+        except OSError:
+            return ""
+    return token
 
 
 def clean_dashboard(payload: dict, existing: dict | None = None) -> dict:
@@ -95,7 +123,11 @@ body{max-width:940px;margin:0 auto;padding:28px;font:16px system-ui,sans-serif;b
 // contains a per-session token, so an absolute URL copied from one session
 // (e.g. pasted into another user's browser or a kiosk) 401s for everyone else.
 // "display/<id>" resolves against the ingress base automatically per session.
-const displayLink=p=>`${base}/${p.replace(/^\//,'')}`;function field(name,value){const input=f.elements[name];if(input)input.value=value??''}function resetForm(){f.reset();field('edit-id','');modalTitle.textContent='New dashboard';for(const[w,k]of[['origin','Icon'],['origin','Shape'],['destination','Icon'],['destination','Shape']]){const el=f.elements[w+k];if(el)el.value=''}for(const which of['origin','destination'])if(typeof markerButtonState==='function')markerButtonState(which)}// Group each h3 section (and everything after it) into a data-variant wrapper
+const displayLink=p=>`${base}/${p.replace(/^\//,'')}`;
+// Direct (non-ingress) link with the shared access token, for kiosks and
+// devices that don't have a Home Assistant session.
+const ACCESS_TOKEN='__ACCESS_TOKEN__';
+const directLink=p=>ACCESS_TOKEN?`${location.origin}${base}${p}?auth=${encodeURIComponent(ACCESS_TOKEN)}`:'';function field(name,value){const input=f.elements[name];if(input)input.value=value??''}function resetForm(){f.reset();field('edit-id','');modalTitle.textContent='New dashboard';for(const[w,k]of[['origin','Icon'],['origin','Shape'],['destination','Icon'],['destination','Shape']]){const el=f.elements[w+k];if(el)el.value=''}for(const which of['origin','destination'])if(typeof markerButtonState==='function')markerButtonState(which)}// Group each h3 section (and everything after it) into a data-variant wrapper
 // so a single variant can be shown/hidden when creating a new dashboard.
 function groupVariants(){
   const kids=[...f.children];let wrapper=null,variant='';
@@ -126,8 +158,8 @@ function openModal(dashboard,variant){
   }
   modal.hidden=false;
 }function closeModal(){modal.hidden=true;resetForm()}function showToast(message){const toast=document.createElement('div');toast.className='toast';toast.innerHTML=`<span class="checkmark">✓</span>${message}`;document.body.append(toast);setTimeout(()=>toast.remove(),1300)}function render(){list.innerHTML=items.length?'': '<p>No dashboards yet.</p>';for(const d of items){const full=displayLink(`/display/${d.id}`),compact=displayLink(`/card/${d.id}`);const row=document.createElement('div');row.className='row';row.innerHTML=`<div class="dash-top"><strong>${d.name}</strong><small>${d.kind==='compact'?'Card':'Full screen'}</small></div>${d.kind==='compact'
-? `<div class="link-line"><span class="link-label">Compact</span><a class="link-url" href="${compact}" target="_blank" rel="noopener">${compact}</a><button class="copy" type="button" data-copy="${compact}" title="Copy link">⧉</button></div>`
-: `<div class="link-line"><span class="link-label">Full screen</span><a class="link-url" href="${full}" target="_blank" rel="noopener">${full}</a><button class="copy" type="button" data-copy="${full}" title="Copy link">⧉</button></div>`}<div class="dash-actions"><button class="secondary">Edit</button><button class="danger">Delete</button></div>`;row.querySelector('.secondary').onclick=()=>openModal(d);row.querySelector('.danger').onclick=async()=>{if(confirm(`Delete ${d.name}?`)){await request(`/api/dashboards/${d.id}`,{method:'DELETE'});load()}};for(const btn of row.querySelectorAll('.copy'))btn.onclick=async()=>{const url=btn.dataset.copy;try{await navigator.clipboard.writeText(url)}catch(e){const ta=document.createElement('textarea');ta.value=url;document.body.append(ta);ta.select();document.execCommand('copy');ta.remove()}btn.textContent='✓';setTimeout(()=>btn.textContent='⧉',1200)};list.append(row)}}async function load(){items=await request('/api/dashboards');render()}f.onsubmit=async e=>{e.preventDefault();const id=f.elements['edit-id'].value;const data=Object.fromEntries(new FormData(f));if(!id&&f.dataset.variant)data.kind=f.dataset.variant;const path=id?`/api/dashboards/${id}`:'/api/dashboards';await request(path,{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});showToast(id?'Saved':'Created');closeModal();load()};cancel.onclick=closeModal;document.querySelector('#new-full').onclick=()=>openModal(null,'full');document.querySelector('#new-compact').onclick=()=>openModal(null,'compact');modal.addEventListener('click',e=>{if(e.target===modal)closeModal()});
+? `<div class="link-line"><span class="link-label">Compact</span><a class="link-url" href="${compact}" target="_blank" rel="noopener">${compact}</a><button class="copy" type="button" data-copy="${compact}" title="Copy link">⧉</button></div>${directLink(`/card/${d.id}`)?`<div class="link-line"><span class="link-label">Direct</span><a class="link-url" href="${directLink(`/card/${d.id}`)}" target="_blank" rel="noopener">${directLink(`/card/${d.id}`)}</a><button class="copy" type="button" data-copy="${directLink(`/card/${d.id}`)}" title="Copy direct link (token-authenticated, for kiosks)">⧉</button></div>`:''}`
+: `<div class="link-line"><span class="link-label">Full screen</span><a class="link-url" href="${full}" target="_blank" rel="noopener">${full}</a><button class="copy" type="button" data-copy="${full}" title="Copy link">⧉</button></div>${directLink(`/display/${d.id}`)?`<div class="link-line"><span class="link-label">Direct</span><a class="link-url" href="${directLink(`/display/${d.id}`)}" target="_blank" rel="noopener">${directLink(`/display/${d.id}`)}</a><button class="copy" type="button" data-copy="${directLink(`/display/${d.id}`)}" title="Copy direct link (token-authenticated, for kiosks)">⧉</button></div>`:''}`}<div class="dash-actions"><button class="secondary">Edit</button><button class="danger">Delete</button></div>`;row.querySelector('.secondary').onclick=()=>openModal(d);row.querySelector('.danger').onclick=async()=>{if(confirm(`Delete ${d.name}?`)){await request(`/api/dashboards/${d.id}`,{method:'DELETE'});load()}};for(const btn of row.querySelectorAll('.copy'))btn.onclick=async()=>{const url=btn.dataset.copy;try{await navigator.clipboard.writeText(url)}catch(e){const ta=document.createElement('textarea');ta.value=url;document.body.append(ta);ta.select();document.execCommand('copy');ta.remove()}btn.textContent='✓';setTimeout(()=>btn.textContent='⧉',1200)};list.append(row)}}async function load(){items=await request('/api/dashboards');render()}f.onsubmit=async e=>{e.preventDefault();const id=f.elements['edit-id'].value;const data=Object.fromEntries(new FormData(f));if(!id&&f.dataset.variant)data.kind=f.dataset.variant;const path=id?`/api/dashboards/${id}`:'/api/dashboards';await request(path,{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});showToast(id?'Saved':'Created');closeModal();load()};cancel.onclick=closeModal;document.querySelector('#new-full').onclick=()=>openModal(null,'full');document.querySelector('#new-compact').onclick=()=>openModal(null,'compact');modal.addEventListener('click',e=>{if(e.target===modal)closeModal()});
 const LATLNG=/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/;
 function setupPicker(which){
   const root=document.querySelector('#pick-'+which),target=f.elements[which];
@@ -361,6 +393,21 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt: str, *args) -> None:
         print(fmt % args, flush=True)
 
+    def is_ingress(self) -> bool:
+        """True when the request arrived through Home Assistant's ingress proxy
+        (which already authenticated the user). Direct connections don't carry
+        these headers."""
+        return bool(self.headers.get("X-Hassio-Ingress") or self.headers.get("X-Forwarded-For") or self.headers.get("X-Forwarded-Host"))
+
+    def authorized(self) -> bool:
+        """Ingress requests pass (HA authenticated them); everything else needs
+        the shared access token via ?auth=… (or the X-Access-Token header)."""
+        if self.is_ingress(): return True
+        expected = access_token()
+        if not expected: return True  # token unavailable (e.g. dev box): fail open rather than lock the app
+        supplied = parse_qs(urlparse(self.path).query).get("auth", [""])[0] or self.headers.get("X-Access-Token", "")
+        return secrets.compare_digest(supplied, expected)
+
     def send_json(self, value: object, status: int = 200) -> None:
         data = json.dumps(value).encode()
         self.send_response(status); self.send_header("Content-Type", "application/json"); self.send_header("Cache-Control", "no-store"); self.send_header("Content-Length", str(len(data))); self.end_headers(); self.wfile.write(data)
@@ -428,8 +475,12 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         path = unquote(urlparse(self.path).path).rstrip("/") or "/"
-        if path == "/": return self.send_html(admin_page().replace("</body>", PRESENTATION_FIELDS + "</body>"))
         if path == "/health": return self.send_json({"ok": True})
+        if not self.authorized(): return self.send_json({"error": "Unauthorized — append ?auth=<access token> (see the add-on's admin page)."}, 401)
+        if path == "/":
+            token = access_token()
+            page = admin_page().replace("__ACCESS_TOKEN__", token).replace("</body>", PRESENTATION_FIELDS + "</body>")
+            return self.send_html(page)
         if path == "/api/dashboards": return self.send_json(load_dashboards())
         if path == "/api/geocode": return self.geocode()
         match = re.fullmatch(r"/(display|card)/([a-z0-9-]+)", path)
@@ -437,6 +488,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json({"error": "Not found"}, 404)
 
     def do_POST(self) -> None:
+        if not self.authorized(): return self.send_json({"error": "Unauthorized."}, 401)
         if urlparse(self.path).path.rstrip("/") == "/api/preview": return self.preview()
         if urlparse(self.path).path.rstrip("/") != "/api/dashboards": return self.send_json({"error": "Not found"}, 404)
         try:
@@ -446,6 +498,7 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError, json.JSONDecodeError) as error: self.send_json({"error": str(error)}, HTTPStatus.BAD_REQUEST)
 
     def do_PUT(self) -> None:
+        if not self.authorized(): return self.send_json({"error": "Unauthorized."}, 401)
         match = re.fullmatch(r"/api/dashboards/([a-z0-9-]+)", urlparse(self.path).path.rstrip("/"))
         if not match: return self.send_json({"error": "Not found"}, 404)
         try:
@@ -453,6 +506,7 @@ class Handler(BaseHTTPRequestHandler):
         except (KeyError, ValueError, json.JSONDecodeError) as error: self.send_json({"error": str(error)}, HTTPStatus.BAD_REQUEST)
 
     def do_DELETE(self) -> None:
+        if not self.authorized(): return self.send_json({"error": "Unauthorized."}, 401)
         match = re.fullmatch(r"/api/dashboards/([a-z0-9-]+)", urlparse(self.path).path.rstrip("/"))
         if not match: return self.send_json({"error": "Not found"}, 404)
         try:
