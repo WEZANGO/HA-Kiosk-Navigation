@@ -54,16 +54,21 @@
     body.corner-vignette .metric.congestion-green strong { color: #4ade80; }
     body.corner-vignette .metric.congestion-amber strong { color: #fbbf24; }
     body.corner-vignette .metric.congestion-red strong { color: #f87171; }
-    body.corner-vignette .metric.pos-tl { --vignette-origin: top left; top: 0; left: 0; }
-    body.corner-vignette .metric.pos-tr { --vignette-origin: top right; top: 0; right: 0; }
-    body.corner-vignette .metric.pos-bl { --vignette-origin: bottom left; bottom: 0; left: 0; }
-    body.corner-vignette .metric.pos-br { --vignette-origin: bottom right; bottom: 0; right: 0; }
+    /* Floating tiles keep a margin from the screen edges so the text is never
+       flush against the side of the screen. */
+    body.corner-vignette .metric.pos-tl { --vignette-origin: top left; top: 14px; left: 22px; }
+    body.corner-vignette .metric.pos-tr { --vignette-origin: top right; top: 14px; right: 22px; }
+    body.corner-vignette .metric.pos-bl { --vignette-origin: bottom left; bottom: 14px; left: 22px; }
+    body.corner-vignette .metric.pos-br { --vignette-origin: bottom right; bottom: 14px; right: 22px; }
     #display-title { position: fixed; z-index: 6; top: 18px; left: 50%; transform: translateX(-50%); max-width: 70vw; padding: 8px 18px; border-radius: 10px; background: rgba(15,23,42,.84); color: #fff; font: 700 2rem/1.15 system-ui,sans-serif; text-align: center; text-shadow: 0 1px 3px #000; }
     #display-title[hidden] { display: none; } body.title-bottom #display-title { top: auto; bottom: 18px; } #display-title { font-size: var(--title-size, 2rem); } body.title-no-background #display-title { background: transparent; box-shadow: none; } body.title-serif #display-title { font-family: Georgia,serif; } body.title-mono #display-title { font-family: ui-monospace,SFMono-Regular,monospace; }
     body.corner-vignette #display-title { top: 0; left: 0; transform: none; width: 100%; max-width: none; min-height: 82px; padding: 13px 20%; border-radius: 0; background: linear-gradient(to bottom, rgba(15,23,42,.9), rgba(15,23,42,.55) 55%, transparent); } body.corner-vignette.title-bottom #display-title { top: auto; bottom: 0; background: linear-gradient(to top, rgba(15,23,42,.9), rgba(15,23,42,.55) 55%, transparent); }
     #status { position: absolute; right: 50%; bottom: 20px; transform: translateX(50%); padding: 7px 11px; border-radius: 7px; background: rgba(15, 23, 42, .78); color: #e2e8f0; font-size: .9rem; }
     #status.error { color: #fca5a5; }
-    #map { height: 100%; min-height: 300px; width: 100%; }
+    #map { height: 100%; min-height: 300px; width: 100%; position: relative; z-index: 0; }
+    /* z-index:0 gives #map its own stacking context so HERE's UI widgets (logo,
+       terms of use) — which use high internal z-indexes — stay under the
+       vignette overlay and title instead of poking through them. */
     #settings { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 20px; background: rgba(3, 7, 18, .85); }
     #settings[hidden] { display: none; }
     form { width: min(100%, 520px); max-height: calc(100vh - 40px); overflow: auto; padding: 24px; border: 1px solid #475569; border-radius: 14px; background: #1e293b; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
