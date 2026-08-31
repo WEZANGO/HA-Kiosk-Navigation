@@ -53,25 +53,28 @@ def access_token() -> str:
 
     HA ingress already authenticates users before requests reach this app, so
     ingress traffic needs no token. Direct connections (port 8099 — kiosks,
-    dashboard iframes, shared links) are authenticated with this token, stored
-    in /data/options.json as access_token. A stable random default is created
-    on first read so it works out of the box.
+    dashboard iframes, shared links) are authenticated with this token.
+
+    The token lives in the app's OWN file (/data/access_token) rather than
+    options.json: Home Assistant rewrites options.json from the add-on's
+    configuration on every restart, which would regenerate the token and break
+    every saved kiosk link. A stable random token is created once on first read.
     """
+    token_file = OPTIONS_FILE.parent / "access_token"
     try:
-        options = json.loads(OPTIONS_FILE.read_text())
-    except (FileNotFoundError, json.JSONDecodeError):
-        options = {}
-    token = str(options.get("access_token", "")).strip()
-    if not token:
-        token = secrets.token_urlsafe(24)
-        options["access_token"] = token
-        try:
-            OPTIONS_FILE.parent.mkdir(parents=True, exist_ok=True)
-            temporary = OPTIONS_FILE.with_suffix(".tmp")
-            temporary.write_text(json.dumps(options, indent=2) + "\n")
-            temporary.replace(OPTIONS_FILE)
-        except OSError:
-            return ""
+        token = token_file.read_text().strip()
+        if token:
+            return token
+    except FileNotFoundError:
+        pass
+    token = secrets.token_urlsafe(24)
+    try:
+        token_file.parent.mkdir(parents=True, exist_ok=True)
+        temporary = token_file.with_suffix(".tmp")
+        temporary.write_text(token + "\n")
+        temporary.replace(token_file)
+    except OSError:
+        return ""
     return token
 
 
@@ -305,8 +308,14 @@ function syncTileHidden(prefix){
   }
 }
 function populateTileCorners(prefix){
+  const taken=new Set();
   for(const [key] of TILE_DEFS){
-    const value=editor.elements[prefix+'Tile'+key]?.value||TILE_DEFAULT_POS[key];
+    let value=editor.elements[prefix+'Tile'+key]?.value||TILE_DEFAULT_POS[key];
+    // Stored configs may assign two tiles to one corner (older versions allowed
+    // it): relocate the later tile to the first free corner so the pickers show
+    // the truth and saving repairs the config.
+    if(taken.has(value))value=CORNERS.map(c=>c[0]).find(c=>!taken.has(c))||'';
+    if(value)taken.add(value);
     const sel=tileCornerSelects(prefix).find(s=>s.dataset.corner===prefix+value);
     if(sel)sel.value=key;
   }

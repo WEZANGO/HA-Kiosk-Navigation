@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vignette & tile tuning — sample dashboard</title>
+<style>
+  /* ---- Playground chrome (not part of the dashboard) ---- */
+  :root { color-scheme: dark; }
+  body { margin: 0; font: 14px system-ui, sans-serif; background: #020617; color: #e2e8f0; }
+  header { padding: 10px 16px; background: #0f172a; border-bottom: 1px solid #334155; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  header h1 { font-size: .95rem; margin: 0; }
+  header small { color: #94a3b8; }
+  .css-source { font-size: .75rem; padding: 2px 8px; border-radius: 99px; background: #334155; }
+  .css-source.live { background: #166534; }
+  #controls { padding: 12px 16px; background: #0f172a; border-bottom: 1px solid #334155; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px 18px; }
+  #controls label { display: grid; gap: 3px; font-size: .8rem; color: #cbd5e1; }
+  #controls select, #controls input[type=range] { font: inherit; }
+  #controls output { font-size: .75rem; color: #7dd3fc; }
+  .group { grid-column: 1/-1; font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: #64748b; margin-top: 4px; }
+  #stage-wrap { padding: 14px 16px 30px; }
+  #stage { height: 72vh; min-height: 480px; border: 1px solid #334155; border-radius: 10px; overflow: hidden; position: relative; background: #dfe3e8;
+           transform: translateZ(0); /* makes the dashboard's position:fixed layers resolve against the stage, not the page */ }
+  #stage #app { height: 100%; }
+  #stage.map-dark { background: #334; }
+  /* ---- Dashboard markup: mirrors display.html structure ---- */
+  
+    :root { color-scheme: dark; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #111827; color: #f8fafc; }
+    #app { height: 100vh; min-height: 300px; }
+    #summary { position: fixed; z-index: 4; inset: 0; pointer-events: none; }
+    .metric { position: absolute; display: flex; flex-direction: column; min-width: var(--metric-width,208px); padding: var(--metric-padding,18px 22px); border: 1px solid rgba(148, 163, 184, .55); border-radius: 14px; background: rgba(15, 23, 42, .82); box-shadow: 0 5px 18px rgba(0,0,0,.36); backdrop-filter: blur(7px); z-index: 7; }
+    .metric.pos-tl { top: 16px; left: 16px; } .metric.pos-tr { top: 16px; right: 16px; } .metric.pos-bl { bottom: 16px; left: 16px; } .metric.pos-br { bottom: 16px; right: 16px; }
+    .metric[hidden] { display: none; }
+    .metric small { color: #cbd5e1; font-size: var(--metric-label,.98rem); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+    .metric strong { font-size: var(--metric-value,clamp(2.15rem, 4vw, 3.2rem)); line-height: 1.08; margin-top: 6px; }
+    #vignette-overlay { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+    #vignette-overlay::before { content: ""; position: absolute; inset: 0; }
+    /* Every position is ONE full-viewport gradient anchored at the vignette's
+       origin, sized farthest-corner: the fade is a smooth ellipse over the whole
+       screen — no clipped quarter boxes, no hard edges at any size.
+       Corner/edge modes: dark at the origin, fading out over --vig-fade.
+       'all': transparent in the middle, dark rim reaching the corners. */
+    #vignette-overlay[data-vig="tl"]::before { background: radial-gradient(ellipse farthest-corner at 0 0, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vig-fade,20%), transparent calc(var(--vig-fade,20%) + 30%)); }
+    #vignette-overlay[data-vig="tr"]::before { background: radial-gradient(ellipse farthest-corner at 100% 0, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vig-fade,20%), transparent calc(var(--vig-fade,20%) + 30%)); }
+    #vignette-overlay[data-vig="bl"]::before { background: radial-gradient(ellipse farthest-corner at 0 100%, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vig-fade,20%), transparent calc(var(--vig-fade,20%) + 30%)); }
+    #vignette-overlay[data-vig="br"]::before { background: radial-gradient(ellipse farthest-corner at 100% 100%, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vig-fade,20%), transparent calc(var(--vig-fade,20%) + 30%)); }
+    #vignette-overlay[data-vig="top"]::before { background: radial-gradient(ellipse farthest-corner at 50% 0, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vig-fade,20%), transparent calc(var(--vig-fade,20%) + 30%)); }
+    #vignette-overlay[data-vig="bottom"]::before { background: radial-gradient(ellipse farthest-corner at 50% 100%, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vig-fade,20%), transparent calc(var(--vig-fade,20%) + 30%)); }
+    #vignette-overlay[data-vig="left"]::before { background: radial-gradient(ellipse farthest-corner at 0 50%, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vig-fade,20%), transparent calc(var(--vig-fade,20%) + 30%)); }
+    #vignette-overlay[data-vig="right"]::before { background: radial-gradient(ellipse farthest-corner at 100% 50%, rgba(15,23,42,var(--vignette-alpha,.7)), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) var(--vig-fade,20%), transparent calc(var(--vig-fade,20%) + 30%)); }
+    #vignette-overlay[data-vig="all"]::before { background: radial-gradient(ellipse farthest-corner at 50% 50%, transparent var(--vig-inner,55%), rgba(15,23,42,calc(var(--vignette-alpha,.7)*.74)) calc(var(--vig-inner,55%) + 11%), rgba(15,23,42,var(--vignette-alpha,.7)) var(--vig-outer,77%)); }
+    .metric.congestion-green { background: rgba(21, 128, 61, .92); border-color: rgba(134, 239, 172, .75); }
+    .metric.congestion-amber { background: rgba(180, 83, 9, .94); border-color: rgba(253, 230, 138, .82); }
+    .metric.congestion-red { background: rgba(185, 28, 28, .94); border-color: rgba(254, 202, 202, .82); }
+    .metric.congestion-green small, .metric.congestion-amber small, .metric.congestion-red small { color: #fff; }
+    /* Vignette-style tiles: OPAQUE dark backdrop (no border/rounding) so the
+       tile's own brightness never depends on what's behind it (dark vignette at
+       the top, bright map at the bottom would otherwise bleed through and make
+       the tiles uneven / wash out the white text). */
+    body.corner-vignette .metric { border: 0; border-radius: 0; box-shadow: none; backdrop-filter: none; background: #0f172a; }
+    body.corner-vignette .metric.pos-tl { --vignette-origin: top left; top: 0; left: 0; }
+    body.corner-vignette .metric.pos-tr { --vignette-origin: top right; top: 0; right: 0; }
+    body.corner-vignette .metric.pos-bl { --vignette-origin: bottom left; bottom: 0; left: 0; }
+    body.corner-vignette .metric.pos-br { --vignette-origin: bottom right; bottom: 0; right: 0; }
+    #display-title { position: fixed; z-index: 6; top: 18px; left: 50%; transform: translateX(-50%); max-width: 70vw; padding: 8px 18px; border-radius: 10px; background: rgba(15,23,42,.84); color: #fff; font: 700 2rem/1.15 system-ui,sans-serif; text-align: center; text-shadow: 0 1px 3px #000; }
+    #display-title[hidden] { display: none; } body.title-bottom #display-title { top: auto; bottom: 18px; } #display-title { font-size: var(--title-size, 2rem); } body.title-no-background #display-title { background: transparent; box-shadow: none; } body.title-serif #display-title { font-family: Georgia,serif; } body.title-mono #display-title { font-family: ui-monospace,SFMono-Regular,monospace; }
+    body.corner-vignette #display-title { top: 0; left: 0; transform: none; width: 100%; max-width: none; min-height: 82px; padding: 13px 20%; border-radius: 0; background: linear-gradient(to bottom, rgba(15,23,42,.9), rgba(15,23,42,.55) 55%, transparent); } body.corner-vignette.title-bottom #display-title { top: auto; bottom: 0; background: linear-gradient(to top, rgba(15,23,42,.9), rgba(15,23,42,.55) 55%, transparent); }
+    #status { position: absolute; right: 50%; bottom: 20px; transform: translateX(50%); padding: 7px 11px; border-radius: 7px; background: rgba(15, 23, 42, .78); color: #e2e8f0; font-size: .9rem; }
+    #status.error { color: #fca5a5; }
+    #map { height: 100%; min-height: 300px; width: 100%; }
+    #settings { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 20px; background: rgba(3, 7, 18, .85); }
+    #settings[hidden] { display: none; }
+    form { width: min(100%, 520px); max-height: calc(100vh - 40px); overflow: auto; padding: 24px; border: 1px solid #475569; border-radius: 14px; background: #1e293b; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+    h1 { margin: 0 0 8px; font-size: 1.25rem; }
+    .build-version { margin: -3px 0 14px; color: #94a3b8; font-size: .78rem; }
+    p { color: #cbd5e1; font-size: .9rem; line-height: 1.45; }
+    label { display: block; margin-top: 14px; font-size: .85rem; color: #e2e8f0; }
+    input, select { display: block; width: 100%; margin-top: 6px; padding: 10px; border: 1px solid #64748b; border-radius: 7px; background: #0f172a; color: #fff; font: inherit; }
+    button { margin-top: 20px; padding: 10px 14px; border: 0; border-radius: 7px; background: #38bdf8; color: #082f49; font-weight: 700; cursor: pointer; }
+    #route-actions { position: fixed; z-index: 5; top: 16px; right: 50%; transform: translateX(50%); display: flex; gap: 8px; }
+    .quiet-button { margin: 0; background: #1e293b; border: 1px solid #64748b; color: #f8fafc; font-size: .8rem; box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+    a { color: #7dd3fc; }
+    @media (max-width: 640px) {
+      .metric { min-width: 116px; padding: 9px 11px; }
+      .metric small { font-size: .62rem; }
+      .metric strong { font-size: 1.35rem; }
+      .metric.pos-tl { top: 10px; left: 10px; } .metric.pos-tr { top: 10px; right: 10px; }
+      .metric.pos-bl { bottom: 10px; left: 10px; } .metric.pos-br { bottom: 10px; right: 10px; }
+      #route-actions { top: 76px; }
+      #status { bottom: 86px; max-width: calc(100% - 40px); text-align: center; }
+    }
+    body.compact #summary { position: fixed; inset: auto 0 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 8px; background: rgba(15, 23, 42, .88); pointer-events: auto; }
+    body.compact .metric, body.compact .metric:nth-child(n) { position: static; min-width: 0; padding: var(--metric-padding,8px 10px); border-radius: 8px; }
+    body.compact .metric small { font-size: var(--metric-label,.58rem); }
+    body.compact .metric strong { font-size: var(--metric-value,clamp(1.05rem, 2.8vw, 1.6rem)); }
+    body.compact #status, body.compact #route-actions { display: none; }
+  
+</style>
+</head>
+<body>
+<header>
+  <h1>Sample dashboard tuner</h1>
+  <small>change options live — nothing is saved; copy values into the add-on form when happy</small>
+  <span class="css-source" id="css-source">CSS: loading…</span>
+</header>
+<div id="controls">
+  <div class="group">Presentation</div>
+  <label>Card style
+    <select id="c-metricStyle">
+      <option value="vignette" selected>Corner vignette</option>
+      <option value="rounded">Rounded cards</option>
+    </select>
+  </label>
+  <label>Vignette position
+    <select id="c-vignettePosition">
+      <option value="all" selected>All around</option>
+      <option value="top">Top edge</option><option value="bottom">Bottom edge</option>
+      <option value="left">Left edge</option><option value="right">Right edge</option>
+      <option value="tl">Top-left</option><option value="tr">Top-right</option>
+      <option value="bl">Bottom-left</option><option value="br">Bottom-right</option>
+    </select>
+  </label>
+  <label>Vignette opacity <span id="o-vignetteOpacity" class="inline-o"></span>
+    <input type="range" id="c-vignetteOpacity" min="1" max="10" step="1" value="5">
+  </label>
+  <label>Vignette size <span id="o-vignetteSize" class="inline-o"></span>
+    <input type="range" id="c-vignetteSize" min="1" max="10" step="1" value="5">
+  </label>
+  <label>Card size <span id="o-metricSize" class="inline-o"></span>
+    <input type="range" id="c-metricSize" min="1" max="10" step="1" value="7">
+  </label>
+  <label>Map backdrop
+    <select id="c-backdrop">
+      <option value="light" selected>Light map</option>
+      <option value="dark">Dark map</option>
+      <option value="green">Forest</option>
+      <option value="photo">Satellite-ish</option>
+    </select>
+  </label>
+  <div class="group">Tiles</div>
+  <label>Trip time — corner
+    <select class="c-pos" data-tile="tile-duration">
+      <option value="tl">Top left</option><option value="tr">Top right</option>
+      <option value="bl" selected>Bottom left</option><option value="br">Bottom right</option>
+      <option value="">Hidden</option>
+    </select>
+  </label>
+  <label>Trip time — state
+    <select class="c-cong" data-tile="tile-duration">
+      <option value="congestion-green">Green</option>
+      <option value="congestion-amber" selected>Amber</option>
+      <option value="congestion-red">Red</option>
+    </select>
+  </label>
+  <label>Normal time — corner
+    <select class="c-pos" data-tile="tile-normal">
+      <option value="tl" selected>Top left</option><option value="tr">Top right</option>
+      <option value="bl">Bottom left</option><option value="br">Bottom right</option>
+      <option value="">Hidden</option>
+    </select>
+  </label>
+  <label>Traffic delay — corner
+    <select class="c-pos" data-tile="tile-delay">
+      <option value="tl">Top left</option><option value="tr">Top right</option>
+      <option value="bl">Bottom left</option><option value="br" selected>Bottom right</option>
+      <option value="">Hidden</option>
+    </select>
+  </label>
+  <label>Distance — corner
+    <select class="c-pos" data-tile="tile-distance">
+      <option value="tl">Top left</option><option value="tr" selected>Top right</option>
+      <option value="bl">Bottom left</option><option value="br">Bottom right</option>
+      <option value="">Hidden</option>
+    </select>
+  </label>
+  <div class="group">Title</div>
+  <label>Title text
+    <input id="c-title" type="text" placeholder="(no title)" style="background:#0f172a;color:#fff;border:1px solid #64748b;border-radius:6px;padding:5px 8px">
+  </label>
+  <label>Title position
+    <select id="c-titlePosition"><option value="top">Top</option><option value="bottom">Bottom</option></select>
+  </label>
+</div>
+<div id="stage-wrap">
+  <div id="stage">
+    <main id="app">
+      <div id="vignette-overlay" hidden></div>
+      <section id="summary">
+        <div id="tile-duration" class="metric pos-bl congestion-amber"><small>Trip time</small><strong>32 min</strong></div>
+        <div id="tile-normal" class="metric pos-tl"><small>Normal time</small><strong>28 min</strong></div>
+        <div id="tile-delay" class="metric pos-br"><small>Traffic delay</small><strong>+4 min</strong></div>
+        <div id="tile-distance" class="metric pos-tr"><small>Distance</small><strong>18 km</strong></div>
+      </section>
+      <div id="display-title" hidden></div>
+    </main>
+  </div>
+</div>
+<script>
+// Same presentation pipeline as display.html applyPresentation() — kept in sync manually.
+const num = (v, f, mi, ma) => { const n = Number(v); return Number.isFinite(n) ? Math.max(mi, Math.min(ma, n)) : f; };
+const presets = {
+  small: ['150px', '11px 14px', '.72rem'], medium: ['180px', '14px 17px', '.84rem'], large: ['208px', '18px 22px', '.98rem']
+};
+function apply() {
+  const cfg = id => document.getElementById('c-' + id).value;
+  const body = document.body, stage = document.getElementById('stage');
+  const overlay = document.getElementById('vignette-overlay');
+  const title = document.getElementById('display-title');
+  const vig = cfg('metricStyle') === 'vignette';
+  body.classList.toggle('corner-vignette', vig);
+  overlay.hidden = !vig;
+  overlay.dataset.vig = cfg('vignettePosition');
+  const o = num(cfg('vignetteOpacity'), 5, 1, 10) / 10;
+  const s = num(cfg('vignetteSize'), 5, 1, 10);
+  body.style.setProperty('--vignette-alpha', (0.45 + o * 0.5).toFixed(2));
+  const fade = Math.min(65, 8 + s * 6);
+  const inner = Math.max(0, 100 - s * 9), outer = Math.min(100, inner + 22);
+  body.style.setProperty('--vig-fade', fade.toFixed(0) + '%');
+  body.style.setProperty('--vig-inner', inner.toFixed(0) + '%');
+  body.style.setProperty('--vig-outer', outer.toFixed(0) + '%');
+  body.style.setProperty('--vignette-inner', (34 + s * 4.6).toFixed(0) + '%');
+  body.style.setProperty('--vignette-outer', (58 + s * 3.6).toFixed(0) + '%');
+  const ms = num(cfg('metricSize'), 7, 1, 10);
+  body.style.setProperty('--metric-width', (130 + ms * 10) + 'px');
+  body.style.setProperty('--metric-padding', (9 + ms) + 'px ' + (12 + ms * 1.4) + 'px');
+  body.style.setProperty('--metric-label', (0.62 + ms * 0.05).toFixed(2) + 'rem');
+  body.style.setProperty('--metric-value', 'clamp(' + (1.4 + ms * 0.22).toFixed(2) + 'rem, ' + (2 + ms * 0.3).toFixed(1) + 'vw, ' + (1.9 + ms * 0.24).toFixed(2) + 'rem)');
+  for (const el of document.querySelectorAll('.c-pos')) {
+    const tile = document.getElementById(el.dataset.tile);
+    const pos = el.value;
+    tile.hidden = !pos;
+    if (pos) tile.className = tile.className.replace(/\bpos-\w+\b/g, '').trim() + ' pos-' + pos;
+  }
+  for (const el of document.querySelectorAll('.c-cong')) {
+    const tile = document.getElementById(el.dataset.tile);
+    tile.classList.remove('congestion-green', 'congestion-amber', 'congestion-red');
+    tile.classList.add(el.value);
+  }
+  const text = cfg('title');
+  title.hidden = !text;
+  title.textContent = text;
+  body.classList.toggle('has-title', !!text);
+  body.classList.toggle('title-bottom', cfg('titlePosition') === 'bottom');
+  stage.classList.toggle('map-dark', cfg('backdrop') === 'dark');
+  stage.style.background = { light: '#dfe3e8', dark: '#3a4149', green: '#a8c3a0', photo: '#8a8f7e' }[cfg('backdrop')] || '#dfe3e8';
+  for (const id of ['vignetteOpacity', 'vignetteSize', 'metricSize'])
+    document.getElementById('o-' + id).textContent = '(' + document.getElementById('c-' + id).value + '/10)';
+}
+document.querySelectorAll('#controls select, #controls input').forEach(el => el.addEventListener('input', apply));
+apply();
+// Pull the REAL dashboard CSS out of display.html so this page can never drift from what ships.
+(async () => {
+  const badge = document.getElementById('css-source');
+  try {
+    const src = await (await fetch('display.html')).text();
+    const css = src.match(/<style>([\s\S]*?)<\/style>/)[1];
+    const tag = document.createElement('style'); tag.textContent = css;
+    document.head.appendChild(tag);
+    badge.textContent = 'CSS: live from display.html'; badge.className = 'css-source live';
+    apply();
+  } catch (e) {
+    badge.textContent = 'CSS: embedded snapshot (open via the add-on server for live CSS)';
+  }
+})();
+</script>
+</body>
+</html>
