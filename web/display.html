@@ -3,15 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>HERE Traffic Route</title>
+  <title>Kiosk Traffic Route</title>
   <!-- HERE Maps JavaScript API v3.2: its default layers use the CURRENT Raster
        Tile API v3 (maps.hereapi.com). The legacy maptile/2.1 service used by
-       v3.1 returns 410 Gone since HERE retired it — that was the blank map. -->
-  <script src="https://js.api.here.com/v3/3.2/mapsjs-core.js"></script>
-  <script src="https://js.api.here.com/v3/3.2/mapsjs-service.js"></script>
-  <script src="https://js.api.here.com/v3/3.2/mapsjs-ui.js"></script>
-  <script src="https://js.api.here.com/v3/3.2/mapsjs-mapevents.js"></script>
-  <link rel="stylesheet" href="https://js.api.here.com/v3/3.2/mapsjs-ui.css" />
+       v3.1 returns 410 Gone since HERE retired it — that was the blank map.
+       These files load at start() time via loadHereSdk() (retrying with
+       backoff) so kiosks that boot before Wi-Fi is up no longer hit
+       "H is not defined" — they just wait for the network. -->
+  <script>var HERE_MAPS_URL_BASE = 'https://js.api.here.com/v3/3.2/';</script>
   <style>
     :root { color-scheme: dark; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     * { box-sizing: border-box; }
@@ -66,7 +65,7 @@
     #status { position: absolute; right: 50%; bottom: 20px; transform: translateX(50%); padding: 7px 11px; border-radius: 7px; background: rgba(15, 23, 42, .78); color: #e2e8f0; font-size: .9rem; }
     #status.error { color: #fca5a5; }
     #map { height: 100%; min-height: 300px; width: 100%; position: relative; z-index: 0; }
-    /* z-index:0 gives #map its own stacking context so HERE's UI widgets (logo,
+    /* z-index:0 gives #map its own stacking context so the map's UI widgets (logo,
        terms of use) — which use high internal z-indexes — stay under the
        vignette overlay and title instead of poking through them. */
     #settings { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 20px; background: rgba(3, 7, 18, .85); }
@@ -117,7 +116,7 @@
 
   <section id="settings" hidden>
     <form id="settings-form">
-      <h1>HERE traffic route</h1>
+      <h1>Kiosk traffic route</h1>
       <div class="build-version">Build 24</div>
       <p>Enter a HERE JavaScript/REST API key and two addresses or coordinates. Values are retained only in this browser.</p>
       <label>HERE API key <input id="api-key" type="password" required autocomplete="off" placeholder="Your HERE API key" /></label>
@@ -190,6 +189,36 @@
         violet:  { line: '#a78bfa', outline: '#3b0764' },
         contrast:{ line: '#fde047', outline: '#111827' }
       };
+      // HERE SDK loader: the mapsjs-* files are fetched from the CDN at start
+      // time instead of static <head> tags. A kiosk that boots before its
+      // Wi-Fi is up used to render "H is not defined" forever — now start()
+      // waits for these and retries with backoff until the network appears.
+      const HERE_SDK_FILES = ['mapsjs-core.js', 'mapsjs-service.js', 'mapsjs-ui.js', 'mapsjs-mapevents.js'];
+      let hereSdkPromise = null;
+      function loadHereSdk() {
+        if (window.H && window.H.service && window.H.ui && window.H.mapevents) return Promise.resolve();
+        if (hereSdkPromise) return hereSdkPromise;
+        const style = document.createElement('link');
+        style.rel = 'stylesheet';
+        style.href = HERE_MAPS_URL_BASE + 'mapsjs-ui.css';
+        document.head.appendChild(style);
+        hereSdkPromise = HERE_SDK_FILES.reduce((chain, file) => chain.then(() => new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = HERE_MAPS_URL_BASE + file;
+          script.async = false;
+          script.onload = resolve;
+          script.onerror = () => {
+            const failure = new Error(`Could not load ${file} from the HERE CDN — no internet yet? Retrying…`);
+            failure.sdkFailure = true;
+            reject(failure);
+          };
+          document.head.appendChild(script);
+        })), Promise.resolve()).catch(error => {
+          hereSdkPromise = null; // allow a later start() to try again
+          throw error;
+        });
+        return hereSdkPromise;
+      }
 
       function getConfig() {
         if (managedConfig) return managedConfig;
@@ -295,7 +324,7 @@
         if (trafficLayer) map.addLayer(trafficLayer); // live flow/incident overlay
         new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
         ui = H.ui.UI.createDefault(map, layers);
-        // Strip HERE's chrome (zoom buttons, map settings, scalebar) — the
+        // Strip the map's chrome (zoom buttons, map settings, scalebar) — the
         // display is meant to be a passive kiosk view.
         if (ui) {
           for (const name of ['zoom', 'mapsettings', 'scalebar', 'panorama', 'contextmenu']) {
@@ -467,6 +496,20 @@
         return `rgb(${channel(0)}, ${channel(1)}, ${channel(2)})`;
       }
       let lastRouteConfig = null;
+      // Retry HERE-SDK loads with backoff so a kiosk that boots offline comes
+      // up on its own as soon as the network does (cap at ~5 min between tries).
+      async function startWithRetry(config, attempt = 0) {
+        try {
+          await loadHereSdk();
+        } catch (error) {
+          console.error(error);
+          setStatus(error.message, true);
+          const delay = Math.min(300000, 5000 * (attempt + 1));
+          setTimeout(() => startWithRetry(config, attempt + 1), delay);
+          return;
+        }
+        return start(config);
+      }
       async function start(config) {
         try {
           applyPresentation(config);
@@ -603,7 +646,7 @@
           amberThreshold: $('amber-threshold').value
         };
         localStorage.setItem(storageKey, JSON.stringify(config));
-        start(config);
+        startWithRetry(config);
       });
       editSettings.addEventListener('click', () => showSettings(getConfig()));
       reset.addEventListener('click', () => {
@@ -622,8 +665,8 @@
         editSettings.hidden = true;
         reset.hidden = true;
         settings.hidden = true;
-        start(initial);
-      } else if (initial.apiKey && initial.origin && initial.destination) start(initial); else showSettings(initial);
+        startWithRetry(initial);
+      } else if (initial.apiKey && initial.origin && initial.destination) startWithRetry(initial); else showSettings(initial);
       const colourScheme = window.matchMedia('(prefers-color-scheme: dark)');
       colourScheme.addEventListener('change', () => {
         const config = getConfig();
