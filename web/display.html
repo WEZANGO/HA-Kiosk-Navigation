@@ -195,16 +195,17 @@
       // waits for these and retries with backoff until the network appears.
       const HERE_SDK_FILES = ['mapsjs-core.js', 'mapsjs-service.js', 'mapsjs-ui.js', 'mapsjs-mapevents.js'];
       let hereSdkPromise = null;
+      function sdkUrl(file) { return PROXY ? hereProxy(HERE_MAPS_URL_BASE + file) : HERE_MAPS_URL_BASE + file; }
       function loadHereSdk() {
         if (window.H && window.H.service && window.H.ui && window.H.mapevents) return Promise.resolve();
         if (hereSdkPromise) return hereSdkPromise;
         const style = document.createElement('link');
         style.rel = 'stylesheet';
-        style.href = HERE_MAPS_URL_BASE + 'mapsjs-ui.css';
+        style.href = PROXY ? hereProxy(HERE_MAPS_URL_BASE + 'mapsjs-ui.css') : HERE_MAPS_URL_BASE + 'mapsjs-ui.css';
         document.head.appendChild(style);
         hereSdkPromise = HERE_SDK_FILES.reduce((chain, file) => chain.then(() => new Promise((resolve, reject) => {
           const script = document.createElement('script');
-          script.src = HERE_MAPS_URL_BASE + file;
+          script.src = sdkUrl(file);
           script.async = false;
           script.onload = resolve;
           script.onerror = () => {
@@ -233,9 +234,14 @@
           routeWidth: params.get('routeWidth') || saved.routeWidth || '12',
           borderWidth: params.get('borderWidth') || saved.borderWidth || '7',
           greenThreshold: params.get('greenThreshold') || saved.greenThreshold || '10',
-          amberThreshold: params.get('amberThreshold') || saved.amberThreshold || '30'
+          amberThreshold: params.get('amberThreshold') || saved.amberThreshold || '30',
+          proxyTraffic: params.get('proxyTraffic') || saved.proxyTraffic || 'true'
         };
       }
+      // Proxy mode: all HERE traffic flows through the add-on server so kiosks
+      // without internet still work. The server injects the API key itself.
+      const PROXY = String(getConfig().proxyTraffic) !== 'false';
+      const hereProxy = path => `/api/proxy?url=${encodeURIComponent(path)}&auth=${encodeURIComponent(getConfig().authToken || '')}`;
       function formatTime(seconds) {
         seconds = Math.round(seconds || 0);
         const hours = Math.floor(seconds / 3600), minutes = Math.round((seconds % 3600) / 60);
@@ -296,7 +302,7 @@
       // Raster Tile API v3 (maps.hereapi.com) — the legacy maptile/2.1 tiles
       // used by the v3.1 library return 410 Gone (the recent blank map).
       function initMap(apiKey, theme) {
-        platform = new H.service.Platform({ apikey: apiKey });
+        platform = new H.service.Platform({ apikey: PROXY ? 'proxied' : apiKey });
         const layers = platform.createDefaultLayers({ type: 'raster' });
         // v3.2 createDefaultLayers returns vector layers by default; request
         // RASTER tiles explicitly — vector tiles 401 on plans without the
@@ -305,6 +311,23 @@
         const rasterNormal = layers.raster && layers.raster.normal;
         const baseLayer = theme === 'dark' ? (rasterNormal?.mapnight || rasterNormal?.map) : rasterNormal?.map;
         if (!baseLayer) throw new Error('HERE could not create a base map layer for this API key.');
+        if (PROXY) {
+          // Rewrite tile URLs through the add-on so an offline kiosk can load
+          // them; the server appends the real API key. HERE's raster provider
+          // exposes its tile URL template via getUri(); wrapping it covers the
+          // base map and the traffic overlay alike.
+          const wrapProvider = layer => {
+            try {
+              const p = layer?.getProvider && layer.getProvider();
+              if (!p) return;
+              const original = p.getUri ? p.getUri.bind(p) : null;
+              if (original) p.getUri = (column, row, zoom) => hereProxy(original(column, row, zoom));
+            } catch (e) { console.warn('tile proxy not available for layer', e); }
+          };
+          wrapProvider(baseLayer);
+          const trafficLayer = layers.raster?.normal?.traffic;
+          if (trafficLayer) wrapProvider(trafficLayer);
+        }
         map = new H.Map($('map'), baseLayer, { pixelRatio: window.devicePixelRatio || 1 });
         // Surface tile/loading failures in the card instead of leaving a blank map.
         const provider = baseLayer.getProvider && baseLayer.getProvider();
@@ -375,6 +398,15 @@
         // Accept raw "lat,lng" coordinates (from the map picker) without geocoding.
         const coords = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(query);
         if (coords) return { lat: Number(coords[1]), lng: Number(coords[2]) };
+        if (PROXY) {
+          // Through the add-on: it injects the real API key, so the kiosk
+          // needs neither internet nor the key.
+          const response = await fetch(hereProxy('https://geocode.search.hereapi.com/v1/geocode?q=' + encodeURIComponent(query)));
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || `Geocoding via proxy failed (${response.status})`);
+          if (!data.items?.length) throw new Error(`No location found for “${query}”`);
+          return data.items[0].position;
+        }
         const url = new URL('https://geocode.search.hereapi.com/v1/geocode');
         url.search = new URLSearchParams({ q: query, apiKey });
         const response = await fetch(url);
@@ -389,15 +421,26 @@
           geocode(config.origin, config.apiKey), geocode(config.destination, config.apiKey)
         ]);
         setStatus('Fetching live traffic…');
-        const url = new URL('https://router.hereapi.com/v8/routes');
-        url.search = new URLSearchParams({
+        const routeQuery = new URLSearchParams({
           origin: `${origin.lat},${origin.lng}`,
           destination: `${destination.lat},${destination.lng}`,
           transportMode: 'car',
           return: 'polyline,summary,travelSummary',
-          spans: 'dynamicSpeedInfo',
-          apiKey: config.apiKey
+          spans: 'dynamicSpeedInfo'
         });
+        if (PROXY) {
+          // Routed through the add-on; the server appends the API key.
+          const response = await fetch(hereProxy('https://router.hereapi.com/v8/routes?' + routeQuery.toString()));
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || `Routing via proxy failed (${response.status})`);
+          const route = data.routes?.[0];
+          if (!route) throw new Error('No driving route is available between these locations.');
+          drawRoute(route, origin, destination, config);
+          return;
+        }
+        const url = new URL('https://router.hereapi.com/v8/routes');
+        url.search = routeQuery;
+        url.searchParams.set('apiKey', config.apiKey);
         const response = await fetch(url);
         if (!response.ok) throw new Error(`HERE Routing returned ${response.status}${response.status === 401 ? ' (unauthorized — check the API key)' : ''}. Check the API key and enabled services.`);
         const data = await response.json(), route = data.routes?.[0];

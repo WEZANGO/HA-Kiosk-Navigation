@@ -7,7 +7,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlencode, urlparse
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 import secrets
 
 DATA_FILE = Path("/data/dashboards.json")
@@ -24,6 +24,7 @@ DEFAULTS = {
     "tileDuration": "bl", "tileNormal": "tl", "tileDelay": "br", "tileDistance": "tr",
     "originIcon": "home", "destinationIcon": "flag",
     "originShape": "circle", "destinationShape": "circle",
+    "proxyTraffic": "true",
 }
 
 
@@ -95,7 +96,8 @@ def clean_dashboard(payload: dict, existing: dict | None = None) -> dict:
     values["scheme"] = str((existing or {}).get("scheme", "ocean"))
     # Marker settings are shared by both variants (not per-variant fields).
     for key in ("originIcon", "originShape", "destinationIcon", "destinationShape",
-                "showDuration", "showNormal", "showDelay", "showDistance"):
+                "showDuration", "showNormal", "showDelay", "showDistance",
+                "proxyTraffic"):
         fallback = (existing or {}).get(key, DEFAULTS[key])
         values[key] = str(payload.get(key, fallback)) or DEFAULTS[key]
     for variant in ("full", "compact"):
@@ -157,10 +159,14 @@ function openModal(dashboard,variant){
     for(const prefix of ['full','compact'])populateTileCorners(prefix);
     modalTitle.textContent=`Edit: ${dashboard.name}`;
     f.dataset.variant=dashboard.kind==='compact'?'compact':'full';
+    proxyCheckbox.checked=String(dashboard.proxyTraffic??'true')!=='false';
+    editor.elements['proxyTraffic'].value=proxyCheckbox.checked?'true':'false';
   }else{
     for(const prefix of ['full','compact'])populateTileCorners(prefix);
     f.dataset.variant=variant||'';
     modalTitle.textContent=variant==='compact'?'New Card':'New Full Screen Map';
+    proxyCheckbox.checked=true;
+    editor.elements['proxyTraffic'].value='true';
   }
   modal.hidden=false;
 }function closeModal(){modal.hidden=true;resetForm()}function showToast(message){const toast=document.createElement('div');toast.className='toast';toast.innerHTML=`<span class="checkmark">✓</span>${message}`;document.body.append(toast);setTimeout(()=>toast.remove(),1300)}function render(){list.innerHTML=items.length?'': '<p>No dashboards yet.</p>';for(const d of items){const full=displayLink(`/display/${d.id}`),compact=displayLink(`/card/${d.id}`);const row=document.createElement('div');row.className='row';row.innerHTML=`<div class="dash-top"><strong>${d.name}</strong><small>${d.kind==='compact'?'Card':'Full screen'}</small></div>${d.kind==='compact'
@@ -276,9 +282,14 @@ function tileControls(prefix){
 }
 // Shared marker settings: hidden inputs hold the values; visible pickers toggle them.
 const markerSection=document.createElement('div');
-markerSection.innerHTML=`<h3 class="wide">Route markers</h3>${markerShapePicker('origin','Origin marker shape')}${markerIconPicker('origin','Origin marker icon')}${markerShapePicker('destination','Destination marker shape')}${markerIconPicker('destination','Destination marker icon')}`;
+markerSection.innerHTML=`<h3 class="wide">Route markers</h3>${markerShapePicker('origin','Origin marker shape')}${markerIconPicker('origin','Origin marker icon')}${markerShapePicker('destination','Destination marker shape')}${markerIconPicker('destination','Destination marker icon')}<label class="wide tile-show" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="proxy-traffic" style="width:auto;margin:0;accent-color:#38bdf8"> Route HERE traffic (map tiles, SDK, routing, geocoding) through Home Assistant — for kiosks without internet access</label>`;
 const h3Full=[...editor.querySelectorAll('h3')].find(node=>node.textContent==='Full-screen display');
 h3Full.parentNode.insertBefore(markerSection,h3Full);
+const proxyCheckbox=document.querySelector('#proxy-traffic');
+proxyCheckbox.addEventListener('change',()=>{editor.elements['proxyTraffic'].value=proxyCheckbox.checked?'true':'false'});
+const proxyHidden=document.createElement('input');
+proxyHidden.type='hidden';proxyHidden.name='proxyTraffic';proxyHidden.value='true';
+editor.appendChild(proxyHidden);
 for(const which of ['origin','destination']){
   for(const kind of ['Icon','Shape']){
     const hidden=document.createElement('input');
@@ -447,15 +458,51 @@ class Handler(BaseHTTPRequestHandler):
     def build_config(self, dashboard: dict, variant: str, compact: bool) -> dict:
         config = {**DEFAULTS, **dashboard, "apiKey": api_key()}
         for key, default in DEFAULTS.items():
+            if key == "proxyTraffic":
+                continue  # shared setting, not per-variant: never override it
             field = variant + key[0].upper() + key[1:]
             config[key] = dashboard.get(field, dashboard.get(key, default))
         if not config["apiKey"]: raise ValueError("Set the map API key in this app's Configuration tab first.")
+        config["authToken"] = access_token()
         return config
 
     def render_display(self, config: dict, compact: bool) -> str:
         injected = json.dumps(config).replace("<", "\\u003c")
         flags = f"<script>window.HERE_TRAFFIC_CONFIG={injected};window.HERE_TRAFFIC_COMPACT={str(compact).lower()};</script>"
         return DISPLAY_FILE.read_text().replace("</head>", flags + "</head>", 1)
+
+    def proxy(self) -> None:
+        """Generic relay for HERE services so kiosks without internet still get
+        maps/routes: SDK files, raster tiles, geocoding, routing. Only HERE
+        hosts are allowed (no open proxy). The API key never reaches the kiosk
+        when proxying — it is injected here instead."""
+        query = parse_qs(urlparse(self.path).query)
+        url = query.get("url", [""])[0]
+        host = urlparse(url).netloc.lower()
+        if not host.endswith((".hereapi.com", ".here.com", "here.com")) or not url.lower().startswith("https://"):
+            return self.send_json({"error": "Only HERE service URLs may be proxied."}, 400)
+        key = api_key()
+        if key and "apiKey=" not in url:
+            separator = "&" if "?" in url else "?"
+            url = f"{url}{separator}apiKey={urlencode({'': key})[1:]}"
+        request = Request(url, headers={"User-Agent": "Mozilla/5.0 (KioskTraffic/1.0)"})
+        try:
+            with urlopen(request, timeout=25) as response:
+                data = response.read(30_000_000)
+                content_type = response.headers.get("Content-Type", "application/octet-stream")
+        except OSError as error:
+            # Pass upstream HTTP errors (401/403 from a bad key) through to the
+            # display so it can show a meaningful message instead of "failed".
+            status = getattr(error, "code", None)
+            if status:
+                return self.send_json({"error": f"Upstream HTTP {status}"}, 502)
+            return self.send_json({"error": "Upstream request failed."}, 502)
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Cache-Control", "public, max-age=300")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
 
     def display(self, identifier: str, compact: bool) -> None:
         try:
@@ -499,6 +546,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_html(page)
         if path == "/api/dashboards": return self.send_json(load_dashboards())
         if path == "/api/geocode": return self.geocode()
+        if path == "/api/proxy": return self.proxy()
         match = re.fullmatch(r"/(display|card)/([a-z0-9-]+)", path)
         if match: return self.display(match.group(2), match.group(1) == "card")
         self.send_json({"error": "Not found"}, 404)
