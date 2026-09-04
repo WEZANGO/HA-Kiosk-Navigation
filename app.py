@@ -6,7 +6,7 @@ import re
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, unquote, urlencode, urlparse
+from urllib.parse import parse_qsl, parse_qs, unquote, urlencode, urlparse
 from urllib.request import Request, urlopen
 import secrets
 
@@ -482,9 +482,13 @@ class Handler(BaseHTTPRequestHandler):
         if not host.endswith((".hereapi.com", ".here.com", "here.com")) or not url.lower().startswith("https://"):
             return self.send_json({"error": "Only HERE service URLs may be proxied."}, 400)
         key = api_key()
-        if key and "apiKey=" not in url:
-            separator = "&" if "?" in url else "?"
-            url = f"{url}{separator}apiKey={urlencode({'': key})[1:]}"
+        if key:
+            # Override any existing apiKey param — proxied tile URLs arrive with
+            # a placeholder from the SDK.
+            parsed = urlparse(url)
+            query = [(k, v) for k, v in parse_qsl(parsed.query) if k.lower() != "apikey"]
+            query.append(("apiKey", key))
+            url = f"{parsed.scheme}://{parsed.netloc}{parsed.path}?{urlencode(query)}"
         request = Request(url, headers={"User-Agent": "Mozilla/5.0 (KioskTraffic/1.0)"})
         try:
             with urlopen(request, timeout=25) as response:

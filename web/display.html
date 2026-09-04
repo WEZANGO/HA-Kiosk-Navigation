@@ -242,6 +242,25 @@
       // without internet still work. The server injects the API key itself.
       const PROXY = String(getConfig().proxyTraffic) !== 'false';
       const hereProxy = path => `/api/proxy?url=${encodeURIComponent(path)}&auth=${encodeURIComponent(getConfig().authToken || '')}`;
+      if (PROXY) {
+        // HERE v3.2 builds tile URLs inside minified internals, so instead of
+        // hooking the SDK we rewrite HERE URLs at the network boundary: every
+        // <img>.src (map/traffic tiles) and every fetch() (copyright JSON)
+        // pointing at a HERE host goes through the add-on's /api/proxy.
+        const HERE_RE = /^https:\/\/([a-z0-9-]+\.)*(hereapi\.com|here\.com)\//i;
+        const rewrite = url => typeof url === 'string' && HERE_RE.test(url) ? hereProxy(url) : url;
+        const imgDesc = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+        Object.defineProperty(HTMLImageElement.prototype, 'src', {
+          set(value) { imgDesc.set.call(this, rewrite(value)); },
+          get() { return imgDesc.get.call(this); }
+        });
+        const originalFetch = window.fetch.bind(window);
+        window.fetch = (input, init) => originalFetch(rewrite(String(input)), init);
+        const originalOpen = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+          return originalOpen.call(this, method, rewrite(url), ...rest);
+        };
+      }
       function formatTime(seconds) {
         seconds = Math.round(seconds || 0);
         const hours = Math.floor(seconds / 3600), minutes = Math.round((seconds % 3600) / 60);
@@ -311,23 +330,8 @@
         const rasterNormal = layers.raster && layers.raster.normal;
         const baseLayer = theme === 'dark' ? (rasterNormal?.mapnight || rasterNormal?.map) : rasterNormal?.map;
         if (!baseLayer) throw new Error('HERE could not create a base map layer for this API key.');
-        if (PROXY) {
-          // Rewrite tile URLs through the add-on so an offline kiosk can load
-          // them; the server appends the real API key. HERE's raster provider
-          // exposes its tile URL template via getUri(); wrapping it covers the
-          // base map and the traffic overlay alike.
-          const wrapProvider = layer => {
-            try {
-              const p = layer?.getProvider && layer.getProvider();
-              if (!p) return;
-              const original = p.getUri ? p.getUri.bind(p) : null;
-              if (original) p.getUri = (column, row, zoom) => hereProxy(original(column, row, zoom));
-            } catch (e) { console.warn('tile proxy not available for layer', e); }
-          };
-          wrapProvider(baseLayer);
-          const trafficLayer = layers.raster?.normal?.traffic;
-          if (trafficLayer) wrapProvider(trafficLayer);
-        }
+        // (Tile proxying happens at the network boundary — see the img.src /
+        // fetch rewrite near the top of the script.)
         map = new H.Map($('map'), baseLayer, { pixelRatio: window.devicePixelRatio || 1 });
         // Surface tile/loading failures in the card instead of leaving a blank map.
         const provider = baseLayer.getProvider && baseLayer.getProvider();

@@ -1,5 +1,5 @@
 name: Kiosk Traffic Dashboards
-version: 0.4.2
+version: 0.4.3
 slug: here_traffic_dashboards
 description: Create shared-key traffic route displays for Home Assistant dashboards.
 url: https://github.com/example/kiosk-traffic-dashboards
