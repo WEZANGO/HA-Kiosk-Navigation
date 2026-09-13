@@ -36,6 +36,54 @@ aspect_ratio: 55%
 
 Do not type `YOUR-APP-PATH` manually: copy the exact URL from the app UI. The direct LAN alternatives are `http://YOUR-HOME-ASSISTANT:8099/display/ID` and `/card/ID`. Use ingress where possible because it uses Home Assistant authentication.
 
+## Route images in notifications
+
+Every display also has an **Image** URL: `…/image/ID.png`. It is a live PNG of the route: the map with the traffic-coloured route line and the start/end markers, and nothing else — a notification's own text carries the numbers, so the image stays a clean map. If the display has a **Title** set, that is drawn too; otherwise the image is purely map and route. Home Assistant consumes it like any other image, so it can be attached to a notification or exposed as a camera.
+
+The PNG is rendered by the app itself from HERE Raster Tiles plus the HERE routing API: no browser, no screenshot service, and nothing extra to install. The route colouring, markers and title use the same styling as the display, so the image matches the kiosk in either map appearance.
+
+| Parameter | Effect |
+| --- | --- |
+| `?theme=dark` / `?theme=light` | Chooses the basemap. Without it, the display's own **Map appearance** applies — and **Automatic** renders dark, because the image is fetched by Home Assistant or the phone, neither of which tells the renderer what the device's appearance is. Use `?theme=light` for a light map (daytime, or a phone in light mode). |
+| `?w=` and `?h=` | Image size, default 1080×540 and maximum 2048 each. A wide banner (`?w=1200&h=400`) suits a notification; a square (`?w=800&h=800`) suits a dashboard picture card. |
+
+The URL shown in the app carries the shared access token (`?auth=…`) because Home Assistant and the phone fetch the image outside the ingress session.
+
+### Attach the map to a notification
+
+```yaml
+actions:
+  - service: notify.mobile_app_your_phone
+    data:
+      title: Morning commute
+      message: "Leave now — 28 min, +7 min delay"
+      data:
+        image: http://local-here-traffic-dashboards:8099/image/morning-commute.png?auth=YOUR-TOKEN
+```
+
+Android downloads that image and shows it in the notification. Add `&theme=light` (or `dark`) to control the map appearance for that recipient. The iOS companion app instead takes `data.attachment`:
+
+```yaml
+      data:
+        attachment:
+          url: http://local-here-traffic-dashboards:8099/image/morning-commute.png?auth=YOUR-TOKEN
+          content-type: png
+```
+
+### Expose it as a camera
+
+A camera entity means Home Assistant fetches the image, so it also works when you are away from home and can be used in dashboards, `camera.snapshot`, and notifications of any kind:
+
+```yaml
+camera:
+  - platform: generic
+    name: Commute map
+    still_image_url: http://local-here-traffic-dashboards:8099/image/morning-commute.png?auth=YOUR-TOKEN
+    scan_interval: 60
+```
+
+Use a host Home Assistant can reach: `local-here-traffic-dashboards` (an app installed from a local folder is reachable inside Home Assistant as `local_<slug>` → `local-here-traffic-dashboards`; an app from a GitHub repository uses its hashed repository id instead), or the Home Assistant host's LAN address such as `http://192.168.1.10:8099`. The image is reused for 60 seconds at a time, so even a camera polling every few seconds does not re-render on every request.
+
 ## Security
 
 The API key is stored in Home Assistant's app configuration, rather than browser local storage. The display still has to receive a browser-compatible HERE API key to render an interactive map, so restrict that key to your Home Assistant hostname(s) and the required HERE products. Do not use a privileged server secret as the browser key.
