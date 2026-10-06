@@ -341,17 +341,28 @@ function syncTileHidden(prefix){
     editor.elements[prefix+'Show'+sel.value].value=editor.querySelector(`[data-cornercheck="${prefix}${corner}"]`).checked?'true':'false';
   }
   // Unassigned tiles: hidden, parked on a free corner for their position value.
+  // The position is ALWAYS rewritten — including to '' when no corner is free —
+  // so a tile that just lost its corner to another picker never keeps a stale
+  // position that collides with the tile now shown there (that collision used to
+  // make the newly-picked card look deselected when the editor was reopened).
   for(const [key] of TILE_DEFS){
     const sel=selects.find(s=>s.value===key);
     if(sel)continue;
     editor.elements[prefix+'Show'+key].value='false';
     const fallback=[TILE_DEFAULT_POS[key],...CORNERS.map(c=>c[0])].find(c=>!used.has(c));
-    if(fallback){editor.elements[prefix+'Tile'+key].value=fallback;used.add(fallback);}
+    editor.elements[prefix+'Tile'+key].value=fallback||'';
+    if(fallback)used.add(fallback);
   }
 }
 function populateTileCorners(prefix){
   const taken=new Set();
-  for(const [key] of TILE_DEFS){
+  const isShown=key=>editor.elements[prefix+'Show'+key]?.value!=='false';
+  // Resolve the tiles that are actually on screen FIRST (still in the fixed
+  // TILE_DEFS order within each group). A stored config can name the same corner
+  // for a shown tile and a hidden one; the hidden one must give way, otherwise it
+  // would take the corner and the visible card would come back deselected.
+  const keys=TILE_DEFS.map(([key])=>key).sort((a,b)=>(isShown(b)?1:0)-(isShown(a)?1:0));
+  for(const key of keys){
     let value=editor.elements[prefix+'Tile'+key]?.value||TILE_DEFAULT_POS[key];
     // Stored configs may assign two tiles to one corner (older versions allowed
     // it): relocate the later tile to the first free corner so the pickers show

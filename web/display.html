@@ -272,13 +272,14 @@
       }
       // The clock time the driver reaches the destination: now plus the
       // traffic-aware trip time, so it reflects the current conditions rather
-      // than a fixed schedule. Written in the device's own 12/24-hour style, and
-      // it gains a "+1" (or "+2") suffix when the drive crosses midnight so a
-      // late-night arrival is never read as one today.
+      // than a fixed schedule. Always 24-hour (14:35, never 2:35 PM) — a
+      // dashboard clock is read at a glance, not chatted about — and it gains a
+      // "+1" (or "+2") suffix when the drive crosses midnight so a late-night
+      // arrival is never read as one today.
       function formatArrival(seconds) {
         const now = new Date();
         const arrival = new Date(now.getTime() + Math.max(0, seconds || 0) * 1000);
-        const clock = arrival.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const clock = arrival.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
         const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
         const days = Math.round((startOfDay(arrival) - startOfDay(now)) / 86400000);
         return days > 0 ? `${clock} +${days}` : clock;
@@ -546,7 +547,7 @@
         tripMetric.classList.remove('congestion-green', 'congestion-amber', 'congestion-red');
         tripMetric.classList.add(`congestion-${congestion}`);
         tripMetric.setAttribute('aria-label', `Trip time: ${congestion} traffic`);
-        setStatus(`Updated ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
+        setStatus(`Updated ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}`);
       }
       function trafficColour(speedRatio) {
         const green = [34, 197, 94], amber = [245, 158, 11], red = [239, 68, 68];
