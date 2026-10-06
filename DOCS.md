@@ -6,7 +6,9 @@ Each display also has its own **Refresh interval**. It re-runs the traffic-aware
 
 Full-screen and Compact settings each include a **Route outline colour**. The outline is independent of the green-to-red live traffic colours drawn along the route, so it keeps the route legible over any map style.
 
-Each display has separate presentation settings: optional centered title (top or bottom), title size, font, and background; plus corner-card size and either rounded cards or a vignette treatment that fades into the corresponding map corner.
+Each display has separate presentation settings: optional centered title (top or bottom), title size, font, and background; plus corner-card size (a 1–20 scale) and either rounded cards or a vignette treatment that fades into the corresponding map corner.
+
+Each display also places up to four **corner cards**, one per screen corner. Each card shows one of five readings — **Trip time** (with live traffic), **Normal time** (free-flow), **Traffic delay**, **Distance**, or **Arrival time** (the clock time you reach the destination, i.e. now plus the traffic-aware trip time, shown in the device's own 12/24-hour style and with a `+1` suffix if the drive crosses midnight). A card that is not switched on is left off the display, so pick the readings you want and where each sits.
 
 ## Install locally
 

@@ -82,14 +82,14 @@
     a { color: #7dd3fc; }
     @media (max-width: 640px) {
       .metric { min-width: 116px; padding: 9px 11px; }
-      .metric small { font-size: .62rem; }
-      .metric strong { font-size: 1.35rem; }
+      .metric small { font-size: calc(var(--metric-label, .62rem) * .8); }
+      .metric strong { font-size: calc(var(--metric-value, 1.35rem) * .55); }
       .metric.pos-tl { top: 10px; left: 10px; } .metric.pos-tr { top: 10px; right: 10px; }
       .metric.pos-bl { bottom: 10px; left: 10px; } .metric.pos-br { bottom: 10px; right: 10px; }
       #route-actions { top: 76px; }
       #status { bottom: 86px; max-width: calc(100% - 40px); text-align: center; }
     }
-    body.compact #summary { position: fixed; inset: auto 0 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 8px; background: rgba(15, 23, 42, .88); pointer-events: auto; }
+    body.compact #summary { position: fixed; inset: auto 0 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; padding: 8px; background: rgba(15, 23, 42, .88); pointer-events: auto; }
     body.compact .metric, body.compact .metric:nth-child(n) { position: static; min-width: 0; padding: var(--metric-padding,8px 10px); border-radius: 8px; }
     body.compact .metric small { font-size: var(--metric-label,.58rem); }
     body.compact .metric strong { font-size: var(--metric-value,clamp(1.05rem, 2.8vw, 1.6rem)); }
@@ -104,6 +104,7 @@
       <div id="tile-normal" class="metric" data-tile="normal"><small>Normal time</small><strong id="normal-duration">—</strong></div>
       <div id="tile-delay" class="metric" data-tile="delay"><small>Traffic delay</small><strong id="delay">—</strong></div>
       <div id="tile-distance" class="metric" data-tile="distance"><small>Distance</small><strong id="distance">—</strong></div>
+      <div id="tile-arrival" class="metric" data-tile="arrival"><small>Arrival time</small><strong id="arrival">—</strong></div>
       <span id="status">Configure a route to begin</span>
     </section>
     <div id="route-actions" aria-label="Route controls">
@@ -268,6 +269,19 @@
       }
       function formatDistance(meters) {
         return meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${Math.round(meters)} m`;
+      }
+      // The clock time the driver reaches the destination: now plus the
+      // traffic-aware trip time, so it reflects the current conditions rather
+      // than a fixed schedule. Written in the device's own 12/24-hour style, and
+      // it gains a "+1" (or "+2") suffix when the drive crosses midnight so a
+      // late-night arrival is never read as one today.
+      function formatArrival(seconds) {
+        const now = new Date();
+        const arrival = new Date(now.getTime() + Math.max(0, seconds || 0) * 1000);
+        const clock = arrival.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+        const days = Math.round((startOfDay(arrival) - startOfDay(now)) / 86400000);
+        return days > 0 ? `${clock} +${days}` : clock;
       }
       // ?diag=1 — probe HERE tile services with the configured key and report
       // the raw HTTP status of each, to distinguish plan-permission problems
@@ -522,6 +536,7 @@
         $('normal-duration').textContent = formatTime(base);
         $('delay').textContent = total > base ? `+${formatTime(total - base)}` : 'No delay';
         $('distance').textContent = formatDistance(length);
+        $('arrival').textContent = formatArrival(total);
         const delayPercent = base > 0 ? Math.max(0, ((total - base) / base) * 100) : 0;
         const requestedGreen = Number(config.greenThreshold), requestedAmber = Number(config.amberThreshold);
         const greenThreshold = Math.max(0, Math.min(100, Number.isFinite(requestedGreen) ? requestedGreen : 10));
@@ -592,7 +607,7 @@
       function applyPresentation(config) {
         const body = document.body, title = $('display-title');
         const num = (v, fallback, min, max) => { const n = Number(v); return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : fallback; };
-        // Metric card sizing: named presets for legacy configs, otherwise a 1-10 slider scale.
+        // Metric card sizing: named presets for legacy configs, otherwise a 1-20 slider scale.
         const presets = {
           small: ['150px', '11px 14px', '.72rem', 'clamp(1.5rem, 2.7vw, 2.15rem)'],
           medium: ['180px', '14px 17px', '.84rem', 'clamp(1.8rem, 3.3vw, 2.6rem)'],
@@ -602,7 +617,7 @@
         if (presets[config.metricSize]) {
           [width, padding, label, value] = presets[config.metricSize];
         } else {
-          const s = num(config.metricSize, 7, 1, 10);
+          const s = num(config.metricSize, 7, 1, 20);
           width = `${130 + s * 10}px`;
           padding = `${9 + s}px ${12 + s * 1.4}px`;
           label = `${(0.62 + s * 0.05).toFixed(2)}rem`;
@@ -641,7 +656,7 @@
         vignette.dataset.vig = vigPos;
         // Per-tile visibility and corner position.
         const tileDefs = [
-          ['duration', 'tl'], ['normal', 'tr'], ['delay', 'bl'], ['distance', 'br']
+          ['duration', 'tl'], ['normal', 'tr'], ['delay', 'bl'], ['distance', 'br'], ['arrival', 'tr']
         ];
         // Dedupe corners: a stored config can contain two tiles on one corner
         // (older versions allowed it). First tile (fixed order above) keeps the
@@ -703,6 +718,7 @@
         $('normal-duration').textContent = '—';
         $('delay').textContent = '—';
         $('distance').textContent = '—';
+        $('arrival').textContent = '—';
         $('tile-duration').classList.remove('congestion-green', 'congestion-amber', 'congestion-red');
         setStatus('Configuration cleared');
         showSettings({ apiKey: '', origin: '', destination: '', scheme: 'ocean', theme: 'dark', zoomOut: '1.2', routeWidth: '12', borderWidth: '7', greenThreshold: '10', amberThreshold: '30' });

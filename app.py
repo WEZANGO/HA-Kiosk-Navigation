@@ -34,7 +34,9 @@ DEFAULTS = {
     "titleFont": "system", "metricSize": "large", "metricStyle": "rounded",
     "vignetteOpacity": "5", "vignetteSize": "5", "vignettePosition": "all",
     "showDuration": "true", "showNormal": "true", "showDelay": "true", "showDistance": "true",
+    "showArrival": "false",
     "tileDuration": "bl", "tileNormal": "tl", "tileDelay": "br", "tileDistance": "tr",
+    "tileArrival": "tr",
     "originIcon": "home", "destinationIcon": "flag",
     "originShape": "circle", "destinationShape": "circle",
     "proxyTraffic": "true",
@@ -108,15 +110,17 @@ def clean_dashboard(payload: dict, existing: dict | None = None) -> dict:
     values = {"id": identifier, "name": name, "origin": origin, "destination": destination, "kind": kind}
     values["scheme"] = str((existing or {}).get("scheme", "ocean"))
     # Marker settings are shared by both variants (not per-variant fields).
+    # The per-corner tile switches are stored per variant further down (the
+    # admin UI has a separate set of corner checkboxes for each), but a shared
+    # value is still written here so dashboards saved before that stay working.
     for key in ("originIcon", "originShape", "destinationIcon", "destinationShape",
-                "showDuration", "showNormal", "showDelay", "showDistance",
+                "showDuration", "showNormal", "showDelay", "showDistance", "showArrival",
                 "proxyTraffic"):
         fallback = (existing or {}).get(key, DEFAULTS[key])
         values[key] = str(payload.get(key, fallback)) or DEFAULTS[key]
     for variant in ("full", "compact"):
         for key, default in DEFAULTS.items():
-            if key in ("originIcon", "originShape", "destinationIcon", "destinationShape",
-                       "showDuration", "showNormal", "showDelay", "showDistance"):
+            if key in ("originIcon", "originShape", "destinationIcon", "destinationShape"):
                 continue
             field = variant + key[0].upper() + key[1:]
             fallback = (existing or {}).get(field, (existing or {}).get(key, default))
@@ -173,6 +177,13 @@ function openModal(dashboard,variant){
   if(dashboard){
     for(const[k,v]of Object.entries(dashboard))field(k,v);
     field('edit-id',dashboard.id);
+    // Dashboards saved before the corner switches became per-variant stored
+    // them once, unprefixed. Seed each variant's switches from that shared value
+    // so an edited display keeps the tiles it had switched on or off.
+    for(const key of['Duration','Normal','Delay','Distance','Arrival'])
+      for(const prefix of['full','compact'])
+        if(dashboard[prefix+'Show'+key]===undefined&&dashboard['show'+key]!==undefined)
+          field(prefix+'Show'+key,dashboard['show'+key]);
     for(const which of ['origin','destination'])markerButtonState(which);
     for(const prefix of ['full','compact'])populateTileCorners(prefix);
     modalTitle.textContent=`Edit: ${dashboard.name}`;
@@ -284,14 +295,16 @@ const ICONS={
  train:'<rect x="5" y="3" width="14" height="14" rx="3"/><path d="M5 11h14"/><circle cx="9" cy="14.5" r=".8"/><circle cx="15" cy="14.5" r=".8"/><path d="M8 20l-1.5 2M16 20l1.5 2"/>'
 };
 const sizeMap={small:3,medium:5,large:7};
-const TILE_DEFS=[['Duration','Trip time'],['Normal','Normal time'],['Delay','Traffic delay'],['Distance','Distance']];
+const TILE_DEFS=[['Duration','Trip time'],['Normal','Normal time'],['Delay','Traffic delay'],['Distance','Distance'],['Arrival','Arrival time']];
 const previewButton=(prefix,heading)=>`<div class="preview-actions wide"><button type="button" class="preview-btn" data-previewbtn="${prefix}">▶ ${heading} preview</button><span class="preview-hint" data-previewhint="${prefix}" hidden></span></div>`;
 // Defaults: top left = normal time, top right = distance, bottom left = trip time, bottom right = traffic delay.
-const TILE_DEFAULT_POS={Duration:'bl',Normal:'tl',Delay:'br',Distance:'tr'};
+// Arrival time starts hidden (five tiles, four corners) and is parked on a corner
+// until it is switched on and given a free one.
+const TILE_DEFAULT_POS={Duration:'bl',Normal:'tl',Delay:'br',Distance:'tr',Arrival:'tr'};
 const CORNERS=[['tl','Top left'],['tr','Top right'],['bl','Bottom left'],['br','Bottom right']];
 for(const [prefix,heading] of [['full','Full-screen presentation'],['compact','Compact presentation']]){
   const anchor=[...editor.querySelectorAll('h3')].find(node=>node.textContent.startsWith(prefix==='full'?'Full':'Compact'));
-  anchor.insertAdjacentHTML('afterend', `<h4 class="wide">${heading}</h4>${input(prefix+'Title','Optional title','e.g. Morning commute')}${select(prefix+'TitlePosition','Title position',options.position,'top')}${slider(prefix+'TitleSize','Title size',1,10,1,'medium',sizeMap)}${select(prefix+'TitleBackground','Title background',options.background,'rounded')}${select(prefix+'TitleFont','Title font',options.font,'system')}${slider(prefix+'MetricSize','Card size',1,10,1,'large',sizeMap)}${select(prefix+'MetricStyle','Card style',options.cardStyle,'rounded')}${select(prefix+'VignettePosition','Vignette position',options.vignettePosition,'all')}${slider(prefix+'VignetteOpacity','Vignette opacity',1,10,1,'5',null)}${slider(prefix+'VignetteSize','Vignette size',1,10,1,'5',null)}${tileControls(prefix)}${previewButton(prefix,prefix==='full'?'Full screen':'Compact card')}`);
+  anchor.insertAdjacentHTML('afterend', `<h4 class="wide">${heading}</h4>${input(prefix+'Title','Optional title','e.g. Morning commute')}${select(prefix+'TitlePosition','Title position',options.position,'top')}${slider(prefix+'TitleSize','Title size',1,10,1,'medium',sizeMap)}${select(prefix+'TitleBackground','Title background',options.background,'rounded')}${select(prefix+'TitleFont','Title font',options.font,'system')}${slider(prefix+'MetricSize','Card size',1,20,1,'large',sizeMap)}${select(prefix+'MetricStyle','Card style',options.cardStyle,'rounded')}${select(prefix+'VignettePosition','Vignette position',options.vignettePosition,'all')}${slider(prefix+'VignetteOpacity','Vignette opacity',1,10,1,'5',null)}${slider(prefix+'VignetteSize','Vignette size',1,10,1,'5',null)}${tileControls(prefix)}${previewButton(prefix,prefix==='full'?'Full screen':'Compact card')}`);
 }
 // Per-corner tile pickers: checkbox enables the corner, select chooses its tile.
 function tileControls(prefix){
